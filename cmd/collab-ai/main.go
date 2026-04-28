@@ -10,6 +10,12 @@ import (
 	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
+// Build-time injected via goreleaser ldflags. Empty in dev builds.
+var (
+	commit string
+	date   string
+)
+
 func main() {
 	root := &cobra.Command{
 		Use:   "collab-ai",
@@ -29,9 +35,17 @@ func main() {
 func versionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Print collab-ai protocol version",
+		Short: "Print collab-ai version",
 		Run: func(cmd *cobra.Command, _ []string) {
-			fmt.Println(protocol.Version)
+			fmt.Printf("collab-ai %s", protocol.Version)
+			if commit != "" {
+				fmt.Printf(" (%s", commit[:min(8, len(commit))])
+				if date != "" {
+					fmt.Printf(" · %s", date)
+				}
+				fmt.Print(")")
+			}
+			fmt.Println()
 		},
 	}
 }
