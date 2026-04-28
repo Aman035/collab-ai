@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/Aman035/collab-ai/internal/mcp"
+	"github.com/Aman035/collab-ai/internal/state"
 	"github.com/Aman035/collab-ai/internal/store"
 	collabsync "github.com/Aman035/collab-ai/internal/sync"
 	"github.com/Aman035/collab-ai/internal/transport"
@@ -64,7 +66,12 @@ func runJoin(ctx context.Context, code, dir string) error {
 	fmt.Fprintln(os.Stderr, "  Point your AI agent at this binary as an MCP server.")
 	fmt.Fprintln(os.Stderr)
 
-	go logPeerEvents(ax)
+	sess := newSession("joiner", ax.PeerID(), dir, "", st, ax)
+	go sess.trackPeerEvents(logPeerEvent)
+
+	stateStop := make(chan struct{})
+	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
+	defer close(stateStop)
 
 	mcpServer := mcp.New(st, ax.PeerID())
 	return mcpServer.ServeStdio(ctx)

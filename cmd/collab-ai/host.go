@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/Aman035/collab-ai/internal/mcp"
+	"github.com/Aman035/collab-ai/internal/state"
 	"github.com/Aman035/collab-ai/internal/store"
 	collabsync "github.com/Aman035/collab-ai/internal/sync"
 	"github.com/Aman035/collab-ai/internal/transport"
@@ -55,7 +57,12 @@ func runHost(ctx context.Context, dir string) error {
 
 	printHostBanner(invite, dir)
 
-	go logPeerEvents(ax)
+	sess := newSession("host", ax.PeerID(), dir, invite.Code, st, ax)
+	go sess.trackPeerEvents(logPeerEvent)
+
+	stateStop := make(chan struct{})
+	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
+	defer close(stateStop)
 
 	mcpServer := mcp.New(st, ax.PeerID())
 	return mcpServer.ServeStdio(ctx)
@@ -76,14 +83,12 @@ func printHostBanner(invite transport.Invite, dir string) {
 	fmt.Fprintln(os.Stderr)
 }
 
-func logPeerEvents(ax *transport.AxlTransport) {
-	for ev := range ax.Events() {
-		switch ev.Kind {
-		case transport.PeerJoined:
-			fmt.Fprintln(os.Stderr, "▸ peer joined:", ev.Peer.ID)
-		case transport.PeerLeft:
-			fmt.Fprintln(os.Stderr, "▸ peer left:  ", ev.Peer.ID)
-		}
+func logPeerEvent(ev transport.PeerEvent) {
+	switch ev.Kind {
+	case transport.PeerJoined:
+		fmt.Fprintln(os.Stderr, "▸ peer joined:", ev.Peer.ID)
+	case transport.PeerLeft:
+		fmt.Fprintln(os.Stderr, "▸ peer left:  ", ev.Peer.ID)
 	}
 }
 
