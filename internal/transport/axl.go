@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -76,8 +75,16 @@ func (a *AxlTransport) Host(ctx context.Context) (Invite, error) {
 	return inv, nil
 }
 
-// Join starts an Axl daemon, peers it with the host's TLS endpoint, then
-// completes the application-level handshake (hello / hello_ack).
+// Join starts an Axl daemon, peers it with the host's TLS endpoint, and
+// fires off a hello to the host. Returns as soon as the daemon is ready
+// and the hello is on the wire — the hello_ack arrives later via recvLoop
+// and triggers a PeerJoined event for the consumer.
+//
+// Returning fast matters: when collab-ai is spawned as an MCP server
+// child, the parent (e.g. Claude Code) has a startup timeout for the MCP
+// initialize handshake. Blocking here on a 5s ack window can exceed that
+// budget. A failed handshake surfaces as a missing PeerJoined event
+// rather than an error from this call.
 func (a *AxlTransport) Join(ctx context.Context, invite Invite) error {
 	d, err := startDaemon(ctx, daemonOpts{
 		Listen: nil,
@@ -92,7 +99,6 @@ func (a *AxlTransport) Join(ctx context.Context, invite Invite) error {
 
 	go a.recvLoop()
 
-	// Send hello to the host.
 	now := time.Now().UTC()
 	helloBytes, err := protocol.Encode(protocol.KindHello, d.peerID, now, protocol.HelloPayload{
 		PeerID:  d.peerID,
@@ -107,25 +113,7 @@ func (a *AxlTransport) Join(ctx context.Context, invite Invite) error {
 		_ = d.stop()
 		return fmt.Errorf("send hello: %w", err)
 	}
-
-	// Wait for hello_ack on the events channel. The recvLoop populates
-	// events after handling control messages.
-	deadline := time.NewTimer(5 * time.Second)
-	defer deadline.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-deadline.C:
-			return errors.New("host did not respond to hello within 5s")
-		case ev := <-a.events:
-			// Re-publish to consumer; we've already observed it.
-			go func(ev PeerEvent) { a.events <- ev }(ev)
-			if ev.Kind == PeerJoined && ev.Peer.ID == invite.PeerID {
-				return nil
-			}
-		}
-	}
+	return nil
 }
 
 // Send broadcasts to every joined peer.
