@@ -48,7 +48,7 @@ The hands-on Claude-Code-on-two-terminals validation is left for the demo run; t
 - Persistence (`status` reading state.json) — defer.
 - Pretty CLI output — defer.
 
-## Milestone 2 — Shared directory (full v1 scope)
+## Milestone 2 — Shared directory (full v1 scope) ✅ DONE
 
 Add file synchronization. Now the demo can show "B's agent edits a file, A sees it."
 
@@ -71,6 +71,17 @@ Add file synchronization. Now the demo can show "B's agent edits a file, A sees 
 6. Both A and B edit the same file simultaneously. Verify whichever has the newer ModTime wins; the other peer's content matches the winner.
 
 **Estimated LOC:** +600 over Milestone 1 (~1300 total).
+
+**Status:** all six acceptance items covered by tests in
+`internal/sync/files_test.go` and `internal/store/files_test.go`:
+
+1. ✅ create syncs (`TestFileCreateSyncs`)
+2. ✅ edit syncs (`TestFileEditSyncs`)
+3. ✅ delete syncs (`TestFileDeleteSyncs`)
+4. ✅ oversize file rejected with warning (`TestOversizeFileNotSynced`)
+5. ✅ .gitignore'd file skipped (`TestGitignoredFileNotSynced`)
+6. ✅ concurrent edits → LWW-Register winner; peer-ID breaks ties
+   (`TestUpsertNewerWins`, `TestUpsertPeerIDBreaksTimestampTie`)
 
 ## Milestone 3 — Polish for demo day
 
