@@ -1,6 +1,6 @@
 // Package store is the local source of truth for a session: an append-only
-// conversation log (G-Set keyed by ULID) plus, in M2, an LWW-Register file
-// index. M1 implements the log only.
+// conversation log (G-Set keyed by ULID) plus an LWW-Register file index
+// with add-wins delete semantics.
 package store
 
 import (
@@ -23,29 +23,45 @@ const (
 // Change kinds emitted on Subscribe().
 const (
 	KindEntryAppended = "entry_appended"
+	KindFileUpserted  = "file_upserted"
+	KindFileDeleted   = "file_deleted"
 )
 
-// Change is a single store mutation.
+// Change is a single store mutation. Entry is set for log changes; File is
+// set for file changes.
 type Change struct {
 	Kind   string
 	Entry  *protocol.LogEntry
+	File   *protocol.FileMeta
 	Source string
 }
 
-// Store holds the conversation log in memory. Safe for concurrent use.
+// tombstone records the (ModTime, PeerID) of the most recent delete for a
+// path so a later stale upsert is rejected (add-wins).
+type tombstone struct {
+	ModTime time.Time
+	PeerID  string
+}
+
+// Store holds the conversation log + file index in memory. Safe for
+// concurrent use.
 type Store struct {
-	mu       sync.RWMutex
-	entries  []protocol.LogEntry
-	entryIDs map[string]struct{}
-	changes  chan Change
-	closed   bool
+	mu         sync.RWMutex
+	entries    []protocol.LogEntry
+	entryIDs   map[string]struct{}
+	files      map[string]protocol.FileMeta
+	tombstones map[string]tombstone
+	changes    chan Change
+	closed     bool
 }
 
 // New returns an empty Store with a buffered Change channel.
 func New() *Store {
 	return &Store{
-		entryIDs: make(map[string]struct{}),
-		changes:  make(chan Change, 256),
+		entryIDs:   make(map[string]struct{}),
+		files:      make(map[string]protocol.FileMeta),
+		tombstones: make(map[string]tombstone),
+		changes:    make(chan Change, 256),
 	}
 }
 
@@ -84,6 +100,109 @@ func (s *Store) EntriesSince(t time.Time) []protocol.LogEntry {
 		}
 	}
 	return out
+}
+
+// UpsertFile applies an LWW-Register merge for one file. accepted == true
+// when the merge took effect; the caller (Sync Engine) should mirror to
+// disk only on accepted writes.
+//
+// The register's version is the lexicographic pair (ModTime, PeerID). On
+// equal ModTime, the larger PeerID wins, giving deterministic convergence.
+func (s *Store) UpsertFile(meta protocol.FileMeta, source string) (bool, error) {
+	if meta.Path == "" {
+		return false, errors.New("store: file path is required")
+	}
+	s.mu.Lock()
+	if t, ok := s.tombstones[meta.Path]; ok {
+		if !laterThan(meta.ModTime, meta.PeerID, t.ModTime, t.PeerID) {
+			s.mu.Unlock()
+			return false, nil
+		}
+	}
+	if existing, ok := s.files[meta.Path]; ok {
+		if !laterThan(meta.ModTime, meta.PeerID, existing.ModTime, existing.PeerID) {
+			s.mu.Unlock()
+			return false, nil
+		}
+	}
+	s.files[meta.Path] = meta
+	delete(s.tombstones, meta.Path)
+	s.mu.Unlock()
+
+	out := meta
+	s.emit(Change{Kind: KindFileUpserted, File: &out, Source: source})
+	return true, nil
+}
+
+// DeleteFile applies add-wins delete semantics. accepted == true when the
+// delete took effect; the caller should remove the file from disk only on
+// accepted deletes. A concurrent edit with a newer (ModTime, PeerID) beats
+// the delete.
+func (s *Store) DeleteFile(path string, meta protocol.FileMeta, source string) (bool, error) {
+	if path == "" {
+		return false, errors.New("store: file path is required")
+	}
+	s.mu.Lock()
+	var previous protocol.FileMeta
+	if existing, ok := s.files[path]; ok {
+		if laterThan(existing.ModTime, existing.PeerID, meta.ModTime, meta.PeerID) {
+			s.mu.Unlock()
+			return false, nil
+		}
+		previous = existing
+		delete(s.files, path)
+		s.tombstones[path] = tombstone{ModTime: meta.ModTime, PeerID: meta.PeerID}
+		s.mu.Unlock()
+		s.emit(Change{Kind: KindFileDeleted, File: &previous, Source: source})
+		return true, nil
+	}
+	if t, ok := s.tombstones[path]; ok && laterThan(t.ModTime, t.PeerID, meta.ModTime, meta.PeerID) {
+		s.mu.Unlock()
+		return false, nil
+	}
+	s.tombstones[path] = tombstone{ModTime: meta.ModTime, PeerID: meta.PeerID}
+	s.mu.Unlock()
+
+	out := protocol.FileMeta{Path: path, PeerID: meta.PeerID, ModTime: meta.ModTime}
+	s.emit(Change{Kind: KindFileDeleted, File: &out, Source: source})
+	return true, nil
+}
+
+// ListFiles returns metadata for files whose paths begin with prefix.
+// Empty prefix returns all files. Order is unspecified.
+func (s *Store) ListFiles(prefix string) []protocol.FileMeta {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]protocol.FileMeta, 0, len(s.files))
+	for p, m := range s.files {
+		if prefix == "" || hasPrefix(p, prefix) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// GetFile returns metadata for one path, if known.
+func (s *Store) GetFile(path string) (protocol.FileMeta, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	m, ok := s.files[path]
+	return m, ok
+}
+
+// laterThan returns true iff (aTime, aPeer) > (bTime, bPeer) lexicographically.
+func laterThan(aTime time.Time, aPeer string, bTime time.Time, bPeer string) bool {
+	if aTime.After(bTime) {
+		return true
+	}
+	if bTime.After(aTime) {
+		return false
+	}
+	return aPeer > bPeer
+}
+
+func hasPrefix(s, prefix string) bool {
+	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
 
 // Subscribe returns the change channel. M1: single subscriber (the Sync
