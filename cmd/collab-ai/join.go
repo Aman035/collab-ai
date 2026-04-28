@@ -57,14 +57,17 @@ func runJoin(ctx context.Context, code, dir string) error {
 		}
 	}()
 
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "collab-ai — joined session")
-	fmt.Fprintln(os.Stderr, "  Host peer:  "+invite.PeerID)
-	fmt.Fprintln(os.Stderr, "  My peer:    "+ax.PeerID())
-	fmt.Fprintln(os.Stderr, "  Shared dir: "+dir)
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  Point your AI agent at this binary as an MCP server.")
-	fmt.Fprintln(os.Stderr)
+	c := newPalette(os.Stderr)
+	w := os.Stderr
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.bold("collab-ai")+c.dim(" — joined session"))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Host peer:  ")+shortPeer(invite.PeerID))
+	fmt.Fprintln(w, c.dim("  My peer:    ")+shortPeer(ax.PeerID()))
+	fmt.Fprintln(w, c.dim("  Shared dir: ")+dir)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Point your AI agent at this binary as an MCP server."))
+	fmt.Fprintln(w)
 
 	sess := newSession("joiner", ax.PeerID(), dir, "", st, ax)
 	go sess.trackPeerEvents(logPeerEvent)

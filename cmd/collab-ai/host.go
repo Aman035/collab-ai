@@ -69,26 +69,29 @@ func runHost(ctx context.Context, dir string) error {
 }
 
 func printHostBanner(invite transport.Invite, dir string) {
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "collab-ai — hosting session")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  Invite code:")
-	fmt.Fprintln(os.Stderr, "    "+invite.Code)
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  Shared dir:  "+dir)
-	fmt.Fprintln(os.Stderr, "  Peer ID:     "+invite.PeerID)
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  Share the invite with collaborators.")
-	fmt.Fprintln(os.Stderr, "  Point your AI agent at this binary as an MCP server.")
-	fmt.Fprintln(os.Stderr)
+	c := newPalette(os.Stderr)
+	w := os.Stderr
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.bold("collab-ai")+c.dim(" — hosting session"))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Invite code:"))
+	fmt.Fprintln(w, "    "+c.accent(invite.Code))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Shared dir:  ")+dir)
+	fmt.Fprintln(w, c.dim("  Peer ID:     ")+invite.PeerID)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Share the invite with collaborators."))
+	fmt.Fprintln(w, c.dim("  Point your AI agent at this binary as an MCP server."))
+	fmt.Fprintln(w)
 }
 
 func logPeerEvent(ev transport.PeerEvent) {
+	c := newPalette(os.Stderr)
 	switch ev.Kind {
 	case transport.PeerJoined:
-		fmt.Fprintln(os.Stderr, "▸ peer joined:", ev.Peer.ID)
+		fmt.Fprintln(os.Stderr, c.accent("▸ peer joined: ")+shortPeer(ev.Peer.ID))
 	case transport.PeerLeft:
-		fmt.Fprintln(os.Stderr, "▸ peer left:  ", ev.Peer.ID)
+		fmt.Fprintln(os.Stderr, c.dim("▸ peer left:   ")+shortPeer(ev.Peer.ID))
 	}
 }
 
