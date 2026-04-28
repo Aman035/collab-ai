@@ -1,8 +1,8 @@
-# Binaries
-collab-ai
+# Built binaries (anchored so they don't shadow cmd/collab-ai/)
+/collab-ai
 /bin/
 /dist/
-experiments/axl-hello/axl-hello
+/experiments/axl-hello/axl-hello
 
 # Test artifacts
 *.test

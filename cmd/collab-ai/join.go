@@ -1,0 +1,71 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+
+	"github.com/Aman035/colabAI/internal/mcp"
+	"github.com/Aman035/colabAI/internal/store"
+	collabsync "github.com/Aman035/colabAI/internal/sync"
+	"github.com/Aman035/colabAI/internal/transport"
+)
+
+func joinCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "join <invite-code>",
+		Short: "Join a session as a peer",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := signalContext()
+			defer cancel()
+			return runJoin(ctx, args[0], dir)
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "./shared", "Directory to sync into (M2: file sync; M1: ignored)")
+	return cmd
+}
+
+func runJoin(ctx context.Context, code, dir string) error {
+	invite, err := transport.ParseInvite(code)
+	if err != nil {
+		return fmt.Errorf("invite: %w", err)
+	}
+	if err := ensureDir(dir); err != nil {
+		return err
+	}
+
+	ax := transport.NewAxlTransport()
+	fmt.Fprintln(os.Stderr, "collab-ai — bringing up Axl daemon and joining...")
+	if err := ax.Join(ctx, invite); err != nil {
+		return fmt.Errorf("join: %w", err)
+	}
+	defer ax.Close()
+
+	st := store.New()
+	defer st.Close()
+
+	engine := collabsync.New(st, ax, ax.PeerID())
+	go func() {
+		if err := engine.Run(ctx); err != nil && ctx.Err() == nil {
+			fmt.Fprintln(os.Stderr, "sync engine stopped:", err)
+		}
+	}()
+
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "collab-ai — joined session")
+	fmt.Fprintln(os.Stderr, "  Host peer:  "+invite.PeerID)
+	fmt.Fprintln(os.Stderr, "  My peer:    "+ax.PeerID())
+	fmt.Fprintln(os.Stderr, "  Shared dir: "+dir)
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "  Point your AI agent at this binary as an MCP server.")
+	fmt.Fprintln(os.Stderr)
+
+	go logPeerEvents(ax)
+
+	mcpServer := mcp.New(st, ax.PeerID())
+	return mcpServer.ServeStdio(ctx)
+}
