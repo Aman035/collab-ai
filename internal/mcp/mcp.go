@@ -56,6 +56,16 @@ func New(s *store.Store, peerID string) *Server {
 		out.handlePostToLog,
 	)
 
+	srv.AddTool(
+		mcp.NewTool("list_shared_files",
+			mcp.WithDescription("List metadata for files in the shared directory. Optionally filter by path prefix."),
+			mcp.WithString("path",
+				mcp.Description("Optional path prefix (relative to the shared dir)."),
+			),
+		),
+		out.handleListSharedFiles,
+	)
+
 	return out
 }
 
@@ -115,5 +125,15 @@ func (s *Server) handlePostToLog(ctx context.Context, req mcp.CallToolRequest) (
 	return mcp.NewToolResultJSON(map[string]any{
 		"entry_id":  id,
 		"timestamp": now.Format(time.RFC3339),
+	})
+}
+
+func (s *Server) handleListSharedFiles(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+	prefix, _ := args["path"].(string)
+
+	files := s.store.ListFiles(prefix)
+	return mcp.NewToolResultJSON(map[string]any{
+		"files": files,
 	})
 }
