@@ -28,7 +28,9 @@ type AxlTransport struct {
 	daemon *daemon
 	http   *http.Client
 
-	role string // "host" | "joiner"
+	role      string // "host" | "joiner"
+	myName    string // our friendly handle, included in hello/hello_ack
+	sessionID string // host-assigned identifier for this session
 
 	mu     sync.Mutex
 	peers  map[string]PeerInfo
@@ -50,6 +52,14 @@ func NewAxlTransport() *AxlTransport {
 		events: make(chan PeerEvent, 16),
 		stop:   make(chan struct{}),
 	}
+}
+
+// SetIdentity configures our friendly handle and (host-only) session ID.
+// Call before Host or Join. Both fields are optional — peers without a
+// handle are displayed by their hex peer ID.
+func (a *AxlTransport) SetIdentity(name, sessionID string) {
+	a.myName = name
+	a.sessionID = sessionID
 }
 
 // Host starts an Axl daemon listening on hostListenAddr and mints an invite.
@@ -104,6 +114,7 @@ func (a *AxlTransport) Join(ctx context.Context, invite Invite) error {
 		PeerID:  d.peerID,
 		Token:   invite.Token,
 		Version: protocol.Version,
+		Name:    a.myName,
 	})
 	if err != nil {
 		_ = d.stop()
@@ -181,6 +192,13 @@ func (a *AxlTransport) PeerID() string {
 	}
 	return a.daemon.peerID
 }
+
+// Name returns our friendly handle, set via SetIdentity.
+func (a *AxlTransport) Name() string { return a.myName }
+
+// SessionID returns the session identifier — host's own value, or the
+// host's value adopted from hello_ack (joiner side).
+func (a *AxlTransport) SessionID() string { return a.sessionID }
 
 // Close shuts down the recv loop and the daemon.
 func (a *AxlTransport) Close() error {
@@ -298,10 +316,12 @@ func (a *AxlTransport) handleHello(msg protocol.WireMessage) {
 		return
 	}
 	now := time.Now().UTC()
-	accepted := p.Token == a.token && p.Version != "" // basic check
+	accepted := p.Token == a.token && p.Version != ""
 	ackPayload := protocol.HelloAckPayload{
 		Accepted:   accepted,
 		HostPeerID: a.PeerID(),
+		HostName:   a.myName,
+		SessionID:  a.sessionID,
 	}
 	if !accepted {
 		ackPayload.Error = "invite is invalid or has expired"
@@ -311,7 +331,7 @@ func (a *AxlTransport) handleHello(msg protocol.WireMessage) {
 		_ = a.sendBytesTo(p.PeerID, ack)
 	}
 	if accepted {
-		a.addPeer(PeerInfo{ID: p.PeerID})
+		a.addPeer(PeerInfo{ID: p.PeerID, Name: p.Name})
 	}
 }
 
@@ -325,7 +345,10 @@ func (a *AxlTransport) handleHelloAck(msg protocol.WireMessage) {
 		slog.Error("axl: host rejected hello", "err", p.Error)
 		return
 	}
-	a.addPeer(PeerInfo{ID: p.HostPeerID})
+	if a.sessionID == "" {
+		a.sessionID = p.SessionID // joiner adopts the host's session ID
+	}
+	a.addPeer(PeerInfo{ID: p.HostPeerID, Name: p.HostName})
 }
 
 func (a *AxlTransport) handleGoodbye(msg protocol.WireMessage) {

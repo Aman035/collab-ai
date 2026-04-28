@@ -23,6 +23,7 @@ type Invite struct {
 // PeerInfo is what we know about a connected peer.
 type PeerInfo struct {
 	ID   string
+	Name string // friendly handle if the peer announced one (e.g. "clever-otter")
 	Addr string // for display only — Axl provides nothing here, may be empty
 }
 

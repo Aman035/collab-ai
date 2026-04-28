@@ -64,17 +64,24 @@ type FileMeta struct {
 }
 
 // HelloPayload — joiner identifies itself + presents invite token.
+// Name is the friendly handle the joiner picked (e.g. "clever-otter");
+// optional, peers without one are displayed by their PeerID.
 type HelloPayload struct {
 	PeerID  string `json:"peer_id"`
 	Token   string `json:"token,omitempty"` // present only on join → host
 	Version string `json:"version"`
+	Name    string `json:"name,omitempty"`
 }
 
-// HelloAckPayload — host accepts or rejects.
+// HelloAckPayload — host accepts or rejects. The host's Name and
+// SessionID let a fresh joiner display "joined <session> with <host>"
+// without a separate round trip.
 type HelloAckPayload struct {
 	Accepted   bool   `json:"accepted"`
 	Error      string `json:"error,omitempty"`
 	HostPeerID string `json:"host_peer_id"`
+	HostName   string `json:"host_name,omitempty"`
+	SessionID  string `json:"session_id,omitempty"`
 }
 
 // GoodbyePayload — sent before clean disconnect.
