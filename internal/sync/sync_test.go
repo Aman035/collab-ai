@@ -22,8 +22,8 @@ func TestLogEntrySyncsBetweenPeers(t *testing.T) {
 	defer sA.Close()
 	defer sB.Close()
 
-	eA := New(sA, tA, "peer-A")
-	eB := New(sB, tB, "peer-B")
+	eA := New(sA, tA, "peer-A", "")
+	eB := New(sB, tB, "peer-B", "")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -62,7 +62,7 @@ func TestEchoSuppression(t *testing.T) {
 
 	sA := store.New()
 	defer sA.Close()
-	eA := New(sA, tA, "peer-A")
+	eA := New(sA, tA, "peer-A", "")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

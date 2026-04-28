@@ -38,7 +38,7 @@ func TestM1Gate(t *testing.T) {
 	defer hostTx.Close()
 	hostStore := store.New()
 	defer hostStore.Close()
-	hostEng := New(hostStore, hostTx, hostTx.PeerID())
+	hostEng := New(hostStore, hostTx, hostTx.PeerID(), "")
 	go func() { _ = hostEng.Run(ctx) }()
 
 	// JOINER stack
@@ -49,7 +49,7 @@ func TestM1Gate(t *testing.T) {
 	defer joinTx.Close()
 	joinStore := store.New()
 	defer joinStore.Close()
-	joinEng := New(joinStore, joinTx, joinTx.PeerID())
+	joinEng := New(joinStore, joinTx, joinTx.PeerID(), "")
 	go func() { _ = joinEng.Run(ctx) }()
 
 	// Wait for handshake to be visible on both sides.

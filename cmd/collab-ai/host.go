@@ -46,7 +46,7 @@ func runHost(ctx context.Context, dir string) error {
 	st := store.New()
 	defer st.Close()
 
-	engine := collabsync.New(st, ax, ax.PeerID())
+	engine := collabsync.New(st, ax, ax.PeerID(), dir)
 	go func() {
 		if err := engine.Run(ctx); err != nil && ctx.Err() == nil {
 			fmt.Fprintln(os.Stderr, "sync engine stopped:", err)
