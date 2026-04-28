@@ -33,7 +33,7 @@ package transport
 
 import (
   "context"
-  "github.com/Aman035/colabAI/pkg/protocol"
+  "github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 type Invite struct {

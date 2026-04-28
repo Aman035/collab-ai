@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 func main() {

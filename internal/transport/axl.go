@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // hostListenAddr is the TLS endpoint the host advertises for direct peering.

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 func entry(id, peer string, ts time.Time, content string) protocol.LogEntry {

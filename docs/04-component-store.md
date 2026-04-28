@@ -28,7 +28,7 @@ package store
 
 import (
   "time"
-  "github.com/Aman035/colabAI/pkg/protocol"
+  "github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 type Change struct {

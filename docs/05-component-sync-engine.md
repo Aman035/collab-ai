@@ -31,8 +31,8 @@ package sync
 
 import (
   "context"
-  "github.com/Aman035/colabAI/internal/store"
-  "github.com/Aman035/colabAI/internal/transport"
+  "github.com/Aman035/collab-ai/internal/store"
+  "github.com/Aman035/collab-ai/internal/transport"
 )
 
 type Engine struct {

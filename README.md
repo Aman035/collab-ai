@@ -14,7 +14,7 @@ Or:
 
 ```bash
 brew install collab-ai/tap/collab-ai
-go install github.com/Aman035/colabAI/cmd/collab-ai@latest
+go install github.com/Aman035/collab-ai/cmd/collab-ai@latest
 ```
 
 ## Quick start

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Aman035/colabAI/internal/store"
-	"github.com/Aman035/colabAI/internal/transport"
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/internal/store"
+	"github.com/Aman035/collab-ai/internal/transport"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // Two engines wired through a MemHub: an entry written on A appears on B.

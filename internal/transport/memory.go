@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // MemHub is an in-process broadcast medium used by tests. Multiple

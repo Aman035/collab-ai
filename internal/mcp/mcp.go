@@ -13,8 +13,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/oklog/ulid/v2"
 
-	"github.com/Aman035/colabAI/internal/store"
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/internal/store"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // Server is a thin wrapper around mcp-go's stdio server, configured with

@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Aman035/colabAI/internal/mcp"
-	"github.com/Aman035/colabAI/internal/store"
-	collabsync "github.com/Aman035/colabAI/internal/sync"
-	"github.com/Aman035/colabAI/internal/transport"
+	"github.com/Aman035/collab-ai/internal/mcp"
+	"github.com/Aman035/collab-ai/internal/store"
+	collabsync "github.com/Aman035/collab-ai/internal/sync"
+	"github.com/Aman035/collab-ai/internal/transport"
 )
 
 func hostCmd() *cobra.Command {

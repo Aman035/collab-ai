@@ -6,7 +6,7 @@ Go style and project conventions specific to collab-ai. Follow standard Go conve
 
 - Standard library first.
 - Third-party second.
-- Project-local third (`github.com/Aman035/colabAI/...`).
+- Project-local third (`github.com/Aman035/collab-ai/...`).
 - Group with blank lines. Use `goimports` to format.
 
 ## Errors
@@ -66,7 +66,7 @@ Use `log/slog` (standard library, Go 1.21+). Two log levels matter:
 ## Go module path
 
 ```go
-module github.com/Aman035/colabAI
+module github.com/Aman035/collab-ai
 
 go 1.22
 ```

@@ -11,9 +11,9 @@ import (
 
 	"github.com/oklog/ulid/v2"
 
-	"github.com/Aman035/colabAI/internal/store"
-	"github.com/Aman035/colabAI/internal/transport"
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/internal/store"
+	"github.com/Aman035/collab-ai/internal/transport"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // TestM1Gate is the full M1 acceptance gate sans MCP: Two AxlTransports +

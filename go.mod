@@ -1,4 +1,4 @@
-module github.com/Aman035/colabAI
+module github.com/Aman035/collab-ai
 
 go 1.25.5
 

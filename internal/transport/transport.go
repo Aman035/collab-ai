@@ -9,7 +9,7 @@ package transport
 import (
 	"context"
 
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // Invite is a host's invite for joiners. The Code is human-readable; PeerID

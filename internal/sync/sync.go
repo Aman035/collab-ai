@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Aman035/colabAI/internal/store"
-	"github.com/Aman035/colabAI/internal/transport"
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/internal/store"
+	"github.com/Aman035/collab-ai/internal/transport"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // Engine connects the local Store to the Transport.

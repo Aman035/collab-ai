@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Aman035/colabAI/pkg/protocol"
+	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // Source distinguishes locally-originated changes (broadcast) from
