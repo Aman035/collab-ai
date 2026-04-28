@@ -2,7 +2,9 @@
 /collab-ai
 /bin/
 /dist/
-/experiments/axl-hello/axl-hello
+/experiments/*/axl-hello
+/experiments/*/live-demo
+/experiments/*/cmd
 
 # Test artifacts
 *.test
