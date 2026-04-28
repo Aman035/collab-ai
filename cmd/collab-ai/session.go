@@ -14,9 +14,10 @@ import (
 
 // session bundles the running info we need for state snapshots and
 // peer-event logging. It owns a small peer table keyed by ID so we can
-// remember when each peer joined.
+// remember when each peer joined and what handle they announced.
 type session struct {
 	id         string
+	myName     string
 	startedAt  time.Time
 	role       string
 	peerID     string
@@ -27,7 +28,12 @@ type session struct {
 	tx    *transport.AxlTransport
 
 	mu    sync.Mutex
-	peers map[string]time.Time // id -> joined_at
+	peers map[string]peerEntry // id -> joined_at + handle
+}
+
+type peerEntry struct {
+	JoinedAt time.Time
+	Name     string
 }
 
 func newSession(role, peerID, sharedDir, invite string, st *store.Store, tx *transport.AxlTransport) *session {
@@ -40,7 +46,7 @@ func newSession(role, peerID, sharedDir, invite string, st *store.Store, tx *tra
 		inviteCode: invite,
 		store:      st,
 		tx:         tx,
-		peers:      make(map[string]time.Time),
+		peers:      make(map[string]peerEntry),
 	}
 }
 
@@ -51,7 +57,7 @@ func (s *session) trackPeerEvents(log func(transport.PeerEvent)) {
 		s.mu.Lock()
 		switch ev.Kind {
 		case transport.PeerJoined:
-			s.peers[ev.Peer.ID] = time.Now().UTC()
+			s.peers[ev.Peer.ID] = peerEntry{JoinedAt: time.Now().UTC(), Name: ev.Peer.Name}
 		case transport.PeerLeft:
 			delete(s.peers, ev.Peer.ID)
 		}
@@ -70,9 +76,11 @@ func (s *session) snapshot() *state.File {
 
 	s.mu.Lock()
 	peers := make([]state.Peer, 0, len(s.peers)+1)
-	peers = append(peers, state.Peer{ID: s.peerID, JoinedAt: s.startedAt, Self: true})
-	for id, joined := range s.peers {
-		peers = append(peers, state.Peer{ID: id, JoinedAt: joined})
+	peers = append(peers, state.Peer{
+		ID: s.peerID, Name: s.myName, JoinedAt: s.startedAt, Self: true,
+	})
+	for id, p := range s.peers {
+		peers = append(peers, state.Peer{ID: id, Name: p.Name, JoinedAt: p.JoinedAt})
 	}
 	s.mu.Unlock()
 

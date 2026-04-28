@@ -34,7 +34,11 @@ func runStatus() error {
 	c := newPalette(os.Stdout)
 
 	fmt.Println()
-	fmt.Println(c.bold("collab-ai"), c.dim("v"+f.Version))
+	header := c.bold("collab-ai") + " " + c.dim("v"+f.Version)
+	if f.SessionID != "" {
+		header += "  " + c.dim("session:") + " " + c.accent(f.SessionID)
+	}
+	fmt.Println(header)
 	fmt.Println()
 
 	row := func(label, value string) {
@@ -68,7 +72,11 @@ func runStatus() error {
 			tag = "self  "
 			note = "you (" + f.Role + ")"
 		}
-		fmt.Printf("    %s %s   %s\n", c.accent(tag), shortPeer(p.ID), c.dim(note))
+		display := p.Name
+		if display == "" {
+			display = shortPeer(p.ID)
+		}
+		fmt.Printf("    %s %-18s   %s\n", c.accent(tag), display, c.dim(note))
 	}
 	fmt.Println()
 	return nil

@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Aman035/collab-ai/internal/handle"
 	"github.com/Aman035/collab-ai/internal/mcp"
 	"github.com/Aman035/collab-ai/internal/state"
 	"github.com/Aman035/collab-ai/internal/store"
@@ -18,26 +19,36 @@ import (
 )
 
 func hostCmd() *cobra.Command {
-	var dir string
+	var dir, name string
 	cmd := &cobra.Command{
 		Use:   "host",
 		Short: "Start a session as the host",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
-			return runHost(ctx, dir)
+			return runHost(ctx, dir, name)
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "./shared", "Directory to share (M2: file sync; M1: ignored)")
+	cmd.Flags().StringVar(&dir, "dir", "", "Directory to share (default: ~/collab-ai/<session>/shared/)")
+	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: a friendly auto-generated one)")
 	return cmd
 }
 
-func runHost(ctx context.Context, dir string) error {
-	if err := ensureDir(dir); err != nil {
+func runHost(ctx context.Context, dir, name string) error {
+	sessionID, sharedDir, err := resolveDir(dir)
+	if err != nil {
 		return err
+	}
+	if name == "" {
+		if v := os.Getenv("COLLAB_NAME"); v != "" {
+			name = v
+		} else {
+			name = handle.New()
+		}
 	}
 
 	ax := transport.NewAxlTransport()
+	ax.SetIdentity(name, sessionID)
 	fmt.Fprintln(os.Stderr, "collab-ai — bringing up Axl daemon...")
 	invite, err := ax.Host(ctx)
 	if err != nil {
@@ -48,16 +59,18 @@ func runHost(ctx context.Context, dir string) error {
 	st := store.New()
 	defer st.Close()
 
-	engine := collabsync.New(st, ax, ax.PeerID(), dir)
+	engine := collabsync.New(st, ax, ax.PeerID(), sharedDir)
 	go func() {
 		if err := engine.Run(ctx); err != nil && ctx.Err() == nil {
 			fmt.Fprintln(os.Stderr, "sync engine stopped:", err)
 		}
 	}()
 
-	printHostBanner(invite, dir)
+	printHostBanner(invite, sharedDir, sessionID, name)
 
-	sess := newSession("host", ax.PeerID(), dir, invite.Code, st, ax)
+	sess := newSession("host", ax.PeerID(), sharedDir, invite.Code, st, ax)
+	sess.id = sessionID
+	sess.myName = name
 	go sess.trackPeerEvents(logPeerEvent)
 
 	stateStop := make(chan struct{})
@@ -68,17 +81,17 @@ func runHost(ctx context.Context, dir string) error {
 	return mcpServer.ServeStdio(ctx)
 }
 
-func printHostBanner(invite transport.Invite, dir string) {
+func printHostBanner(invite transport.Invite, sharedDir, sessionID, name string) {
 	c := newPalette(os.Stderr)
 	w := os.Stderr
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, c.bold("collab-ai")+c.dim(" — hosting session"))
+	fmt.Fprintln(w, c.bold("collab-ai")+c.dim(" — hosting session ")+c.accent(sessionID))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  You are:     ")+c.accent(name))
+	fmt.Fprintln(w, c.dim("  Shared dir:  ")+sharedDir)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, c.dim("  Invite code:"))
 	fmt.Fprintln(w, "    "+c.accent(invite.Code))
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, c.dim("  Shared dir:  ")+dir)
-	fmt.Fprintln(w, c.dim("  Peer ID:     ")+invite.PeerID)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, c.dim("  Share the invite with collaborators."))
 	fmt.Fprintln(w, c.dim("  Point your AI agent at this binary as an MCP server."))
@@ -87,22 +100,16 @@ func printHostBanner(invite transport.Invite, dir string) {
 
 func logPeerEvent(ev transport.PeerEvent) {
 	c := newPalette(os.Stderr)
+	display := ev.Peer.Name
+	if display == "" {
+		display = shortPeer(ev.Peer.ID)
+	}
 	switch ev.Kind {
 	case transport.PeerJoined:
-		fmt.Fprintln(os.Stderr, c.accent("▸ peer joined: ")+shortPeer(ev.Peer.ID))
+		fmt.Fprintln(os.Stderr, c.accent("▸ peer joined: ")+display)
 	case transport.PeerLeft:
-		fmt.Fprintln(os.Stderr, c.dim("▸ peer left:   ")+shortPeer(ev.Peer.ID))
+		fmt.Fprintln(os.Stderr, c.dim("▸ peer left:   ")+display)
 	}
-}
-
-func ensureDir(p string) error {
-	if p == "" {
-		return nil
-	}
-	if err := os.MkdirAll(p, 0o755); err != nil {
-		return fmt.Errorf("mkdir %s: %w", p, err)
-	}
-	return nil
 }
 
 func signalContext() (context.Context, context.CancelFunc) {

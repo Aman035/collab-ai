@@ -40,6 +40,7 @@ type File struct {
 // Peer is what we show about a connected peer.
 type Peer struct {
 	ID       string    `json:"id"`
+	Name     string    `json:"name,omitempty"`
 	JoinedAt time.Time `json:"joined_at"`
 	Self     bool      `json:"self,omitempty"`
 }
