@@ -1,0 +1,22 @@
+# Binaries
+collab-ai
+/bin/
+/dist/
+experiments/axl-hello/axl-hello
+
+# Test artifacts
+*.test
+*.out
+coverage.txt
+
+# Go workspaces
+go.work
+go.work.sum
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+
+# collab-ai runtime state (per-session)
+.collab-ai/
