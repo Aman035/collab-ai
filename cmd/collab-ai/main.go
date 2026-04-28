@@ -18,6 +18,7 @@ func main() {
 	root.AddCommand(hostCmd())
 	root.AddCommand(joinCmd())
 	root.AddCommand(statusCmd())
+	root.AddCommand(exportCmd())
 	root.AddCommand(versionCmd())
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
