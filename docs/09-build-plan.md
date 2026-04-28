@@ -83,7 +83,7 @@ Add file synchronization. Now the demo can show "B's agent edits a file, A sees 
 6. ✅ concurrent edits → LWW-Register winner; peer-ID breaks ties
    (`TestUpsertNewerWins`, `TestUpsertPeerIDBreaksTimestampTie`)
 
-## Milestone 3 — Polish for demo day
+## Milestone 3 — Polish for demo day ✅ DONE
 
 Everything works. Make it look professional.
 
