@@ -46,12 +46,13 @@ type Peer struct {
 }
 
 // Path returns the canonical state file location for this machine.
+// Lives next to the bootstrapped axl-node under ~/.collab/.
 func Path() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("home dir: %w", err)
 	}
-	return filepath.Join(home, ".collab-ai", "state.json"), nil
+	return filepath.Join(home, ".collab", "state.json"), nil
 }
 
 // Read parses the state file. Returns an os.IsNotExist error when no

@@ -186,7 +186,7 @@ func run() error {
 
 func buildCollabAI() (string, error) {
 	out := filepath.Join(os.TempDir(), "collab-ai-demo")
-	cmd := exec.Command("go", "build", "-o", out, "./cmd/collab-ai")
+	cmd := exec.Command("go", "build", "-o", out, "./cmd/collab")
 	cmd.Dir = mustRepoRoot()
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr

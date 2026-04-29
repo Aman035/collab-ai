@@ -8,20 +8,20 @@ import (
 	"github.com/Aman035/collab-ai/internal/handle"
 )
 
-// sessionRoot is the parent dir under which collab-ai manages per-session
-// folders. ~/collab-ai/<session-id>/ holds the shared dir and (later) any
+// sessionRoot is the parent dir under which collab manages per-session
+// folders. ~/collab/<session-id>/ holds the shared dir and (later) any
 // per-session config or state.
 func sessionRoot() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("home dir: %w", err)
 	}
-	return filepath.Join(home, "collab-ai"), nil
+	return filepath.Join(home, "collab"), nil
 }
 
 // allocateSessionDir returns (sessionID, sharedDir) for a fresh host session.
 // Picks a fun-name session ID that doesn't already collide with an existing
-// directory under ~/collab-ai/.
+// directory under ~/collab/.
 func allocateSessionDir() (sessionID, sharedDir string, err error) {
 	root, err := sessionRoot()
 	if err != nil {
@@ -42,7 +42,7 @@ func allocateSessionDir() (sessionID, sharedDir string, err error) {
 }
 
 // resolveDir returns the user-supplied --dir if non-empty, otherwise the
-// fresh managed dir under ~/collab-ai/. The returned sessionID is empty
+// fresh managed dir under ~/collab/. The returned sessionID is empty
 // when --dir was overridden (we don't claim a name we didn't create).
 func resolveDir(userDir string) (sessionID, sharedDir string, err error) {
 	if userDir != "" {

@@ -1,4 +1,6 @@
-// Command collab-ai is the CLI entry point. See docs/08-cli.md.
+// Command collab is the CLI entry point for the collab-ai project. The
+// binary is named `collab` for ergonomics; the project, module and brand
+// remain "collab-ai". See docs/08-cli.md.
 package main
 
 import (
@@ -18,7 +20,7 @@ var (
 
 func main() {
 	root := &cobra.Command{
-		Use:   "collab-ai",
+		Use:   "collab",
 		Short: "Multiplayer for AI coding agents — peer-to-peer over Gensyn Axl",
 	}
 	root.AddCommand(createCmd())

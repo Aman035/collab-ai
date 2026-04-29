@@ -11,9 +11,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: collab-ai
-    main: ./cmd/collab-ai
-    binary: collab-ai
+  - id: collab
+    main: ./cmd/collab
+    binary: collab
     env:
       - CGO_ENABLED=0
     goos:
@@ -75,7 +75,10 @@ release:
   footer: |
     **Install:**
     ```bash
-    go install github.com/Aman035/collab-ai/cmd/collab-ai@{{ .Tag }}
+    go install github.com/Aman035/collab-ai/cmd/collab@{{ .Tag }}
     ```
-    Or grab the prebuilt binary from the assets below. You'll also need
-    Gensyn Axl's `node` binary on PATH — see https://github.com/gensyn-ai/axl.
+    Or grab the prebuilt `collab` binary from the assets below.
+
+    On first `collab create` / `collab connect`, the Gensyn Axl daemon
+    is built into `~/.collab/bin/axl-node` automatically — no separate
+    install step.
