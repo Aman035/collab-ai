@@ -12,11 +12,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
-)
 
-// nodeBinary is the name of the Axl daemon executable. We exec whatever is
-// on PATH; users who put it elsewhere can set COLLAB_AXL_NODE.
-const nodeBinary = "node"
+	"github.com/Aman035/collab-ai/internal/bootstrap"
+)
 
 // tcpPortConstant must match across peers. M0 finding: this is internal to
 // the gVisor stack on top of Yggdrasil; same value on every machine.
@@ -41,14 +39,9 @@ type daemon struct {
 // startDaemon spawns the Axl `node` binary with a generated config, then
 // blocks until /topology returns 200 (or timeout).
 func startDaemon(ctx context.Context, opts daemonOpts) (*daemon, error) {
-	bin := os.Getenv("COLLAB_AXL_NODE")
-	if bin == "" {
-		bin = nodeBinary
-	}
-	if _, err := exec.LookPath(bin); err != nil {
-		return nil, fmt.Errorf(
-			"axl 'node' binary not found on PATH (set COLLAB_AXL_NODE=/path/to/node, or build from https://github.com/gensyn-ai/axl)",
-		)
+	bin, err := bootstrap.EnsureAxl()
+	if err != nil {
+		return nil, err
 	}
 
 	apiPort, err := freeTCPPort()
