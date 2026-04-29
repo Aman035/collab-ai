@@ -17,29 +17,33 @@ import (
 	"github.com/Aman035/collab-ai/internal/store"
 	collabsync "github.com/Aman035/collab-ai/internal/sync"
 	"github.com/Aman035/collab-ai/internal/transport"
+	"github.com/Aman035/collab-ai/internal/tui"
 )
 
 func createCmd() *cobra.Command {
 	var name, agent string
+	var detach bool
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Start a new pairing session and launch your AI agent",
 		Long: "Hosts a new collab-ai session under ~/collab-ai/<id>/, exposes\n" +
 			"an HTTP MCP server, writes a child .mcp.json next to the session\n" +
-			"dir, and launches your AI agent as a subprocess.",
+			"dir, and opens a TUI from which you can launch your AI agent.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
-			return runCreate(ctx, name, agent)
+			return runCreate(ctx, name, agent, detach)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: auto-generated)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
 }
 
 func connectCmd() *cobra.Command {
 	var name, agent string
+	var detach bool
 	cmd := &cobra.Command{
 		Use:   "connect <invite-code>",
 		Short: "Join an existing pairing session and launch your AI agent",
@@ -47,15 +51,16 @@ func connectCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
-			return runConnect(ctx, args[0], name, agent)
+			return runConnect(ctx, args[0], name, agent, detach)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: auto-generated)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
 }
 
-func runCreate(ctx context.Context, name, agent string) error {
+func runCreate(ctx context.Context, name, agent string, detach bool) error {
 	sessionID, sharedDir, err := allocateSessionDir()
 	if err != nil {
 		return err
@@ -99,7 +104,9 @@ func runCreate(ctx context.Context, name, agent string) error {
 		return err
 	}
 
-	printCreateBanner(invite, sessionID, name, sharedDir, mcpURL)
+	if detach {
+		printCreateBanner(invite, sessionID, name, sharedDir, mcpURL)
+	}
 
 	sess := newSession("host", ax.PeerID(), sharedDir, invite.Code, st, ax)
 	sess.id = sessionID
@@ -115,10 +122,13 @@ func runCreate(ctx context.Context, name, agent string) error {
 	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
 	defer close(stateStop)
 
-	return launchAgent(ctx, agent, sessionRoot)
+	if detach {
+		return launchAgent(ctx, agent, sessionRoot)
+	}
+	return runTUI(ctx, agent, sessionRoot, sess)
 }
 
-func runConnect(ctx context.Context, code, name, agent string) error {
+func runConnect(ctx context.Context, code, name, agent string, detach bool) error {
 	invite, err := transport.ParseInvite(code)
 	if err != nil {
 		return fmt.Errorf("invite: %w", err)
@@ -162,7 +172,9 @@ func runConnect(ctx context.Context, code, name, agent string) error {
 		return err
 	}
 
-	printConnectBanner(invite, sessionID, name, sharedDir, mcpURL)
+	if detach {
+		printConnectBanner(invite, sessionID, name, sharedDir, mcpURL)
+	}
 
 	sess := newSession("joiner", ax.PeerID(), sharedDir, "", st, ax)
 	sess.id = sessionID
@@ -184,7 +196,69 @@ func runConnect(ctx context.Context, code, name, agent string) error {
 	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
 	defer close(stateStop)
 
-	return launchAgent(ctx, agent, sessionRoot)
+	if detach {
+		return launchAgent(ctx, agent, sessionRoot)
+	}
+	return runTUI(ctx, agent, sessionRoot, sess)
+}
+
+// runTUI opens the bubbletea session view. The user presses [a] to launch
+// the configured agent in the foreground (TUI suspends, agent runs, TUI
+// resumes when the agent exits) and [q] to quit.
+func runTUI(ctx context.Context, agent, sessionRoot string, sess *session) error {
+	tuiCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	return tui.Run(tuiCtx, tui.Config{
+		AgentName: agent,
+		SnapshotFn: func() tui.Snapshot {
+			return sessionToTUI(sess)
+		},
+		AgentLauncher: func() *exec.Cmd {
+			cmd := exec.CommandContext(tuiCtx, agentBinary(agent))
+			cmd.Dir = sessionRoot
+			return cmd
+		},
+		OnQuit: cancel,
+	})
+}
+
+// agentBinary resolves the binary path for the chosen agent. Returns "claude"
+// as a fallback so exec.Command surfaces a useful PATH error if it's missing.
+func agentBinary(agent string) string {
+	switch agent {
+	case "", "claude":
+		if bin, err := exec.LookPath("claude"); err == nil {
+			return bin
+		}
+		return "claude"
+	default:
+		return agent
+	}
+}
+
+// sessionToTUI shapes the session into the snapshot the TUI consumes.
+func sessionToTUI(sess *session) tui.Snapshot {
+	sess.mu.Lock()
+	peers := make([]tui.Peer, 0, len(sess.peers)+1)
+	peers = append(peers, tui.Peer{
+		Name: sess.myName, ID: sess.peerID, Self: true, JoinedAt: sess.startedAt,
+	})
+	for id, p := range sess.peers {
+		peers = append(peers, tui.Peer{
+			Name: p.Name, ID: id, JoinedAt: p.JoinedAt,
+		})
+	}
+	sess.mu.Unlock()
+
+	return tui.Snapshot{
+		SessionID: sess.id,
+		Role:      sess.role,
+		MyName:    sess.myName,
+		Invite:    sess.inviteCode,
+		Peers:     peers,
+		LogCount:  len(sess.store.EntriesSince(time.Time{})),
+		FileCount: len(sess.store.ListFiles("")),
+	}
 }
 
 // pickHandle resolves the user's handle: $COLLAB_NAME wins if set,
