@@ -22,9 +22,10 @@ type Invite struct {
 
 // PeerInfo is what we know about a connected peer.
 type PeerInfo struct {
-	ID   string
-	Name string // friendly handle if the peer announced one (e.g. "clever-otter")
-	Addr string // for display only — Axl provides nothing here, may be empty
+	ID     string
+	Name   string // friendly handle if the peer announced one (e.g. "clever-otter")
+	Status string // "what I'm working on"; latest set_status from this peer
+	Addr   string // for display only — Axl provides nothing here, may be empty
 }
 
 // PeerEvent is fired on join/leave at the application level (after our
@@ -55,6 +56,13 @@ type Transport interface {
 	// SendTo delivers a WireMessage to a specific peer. Used by the Sync
 	// Engine to replay existing state to a freshly-joined peer.
 	SendTo(peerID string, msg protocol.WireMessage) error
+
+	// BroadcastStatus updates our "what I'm working on" line and sends it
+	// to every connected peer. The status replaces our previous one.
+	BroadcastStatus(status string) error
+
+	// MyStatus returns the status we last broadcast (empty if never set).
+	MyStatus() string
 
 	// Receive returns inbound WireMessages. Control messages
 	// (hello/hello_ack/goodbye) are handled by the transport itself and

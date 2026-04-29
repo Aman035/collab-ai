@@ -107,7 +107,7 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 		}
 	}()
 
-	mcpURL, mcpStop, err := startMCPHTTP(ctx, st, ax.PeerID())
+	mcpURL, mcpStop, err := startMCPHTTP(ctx, st, ax, ax.PeerID())
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func runJoin(ctx context.Context, code, name, agent string, detach bool) error {
 		}
 	}()
 
-	mcpURL, mcpStop, err := startMCPHTTP(ctx, st, ax.PeerID())
+	mcpURL, mcpStop, err := startMCPHTTP(ctx, st, ax, ax.PeerID())
 	if err != nil {
 		return err
 	}
@@ -264,11 +264,18 @@ func sessionToTUI(sess *session) tui.Snapshot {
 	peers := make([]tui.Peer, 0, len(sess.peers)+1)
 	peers = append(peers, tui.Peer{
 		Name: sess.myName, ID: sess.peerID, Self: true, JoinedAt: sess.startedAt,
+		Status: sess.tx.MyStatus(),
 	})
 	nameByID := map[string]string{sess.peerID: sess.myName}
+	livePeers := sess.tx.Peers()
+	statusByID := make(map[string]string, len(livePeers))
+	for _, lp := range livePeers {
+		statusByID[lp.ID] = lp.Status
+	}
 	for id, p := range sess.peers {
 		peers = append(peers, tui.Peer{
 			Name: p.Name, ID: id, JoinedAt: p.JoinedAt,
+			Status: statusByID[id],
 		})
 		nameByID[id] = p.Name
 	}
@@ -320,7 +327,7 @@ func pickHandle(name string) string {
 
 // startMCPHTTP starts the MCP HTTP server on a free local port and returns
 // the URL plus a cleanup func.
-func startMCPHTTP(ctx context.Context, st *store.Store, peerID string) (url string, stop func(), err error) {
+func startMCPHTTP(ctx context.Context, st *store.Store, tx transport.Transport, peerID string) (url string, stop func(), err error) {
 	port, err := freeLocalPort()
 	if err != nil {
 		return "", nil, fmt.Errorf("pick mcp port: %w", err)
@@ -328,7 +335,7 @@ func startMCPHTTP(ctx context.Context, st *store.Store, peerID string) (url stri
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	mcpURL := fmt.Sprintf("http://%s/mcp", addr)
 
-	srv := mcp.New(st, peerID)
+	srv := mcp.New(st, tx, peerID)
 	srvCtx, cancel := context.WithCancel(ctx)
 	go func() { _ = srv.ServeHTTP(srvCtx, addr) }()
 	return mcpURL, cancel, nil
@@ -389,6 +396,11 @@ and you should use them **proactively** without being asked:
 - **` + "`list_shared_files`" + `** — list files in ` + "`./shared/`" + `, the
   workspace that auto-syncs between peers. Files outside ` + "`./shared/`" + `
   are local-only.
+- **` + "`set_status`" + `** — set a one-line "what I'm currently doing".
+  Examples: ` + "`reading cache.go`" + `, ` + "`writing the test harness`" + `,
+  ` + "`stuck on the auth flow`" + `. Update it whenever you switch contexts
+  so your partner sees what's happening live in their peer roster. Set it
+  early and often — silence reads as "agent is offline".
 
 ## Conventions
 

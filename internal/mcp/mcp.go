@@ -14,22 +14,26 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/Aman035/collab-ai/internal/store"
+	"github.com/Aman035/collab-ai/internal/transport"
 	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
 // Server is a thin wrapper around mcp-go's stdio server, configured with
-// our two tools backed by a local Store.
+// our tools backed by a local Store + the active transport (for presence
+// + cross-peer calls).
 type Server struct {
 	srv    *server.MCPServer
 	store  *store.Store
+	tx     transport.Transport
 	peerID string
 }
 
 // New constructs a Server. peerID is stamped onto every entry written via
-// post_to_log.
-func New(s *store.Store, peerID string) *Server {
+// post_to_log; the transport is used by tools that broadcast (set_status,
+// ask_peer) and look up peers by handle.
+func New(s *store.Store, t transport.Transport, peerID string) *Server {
 	srv := server.NewMCPServer("collab-ai", protocol.Version)
-	out := &Server{srv: srv, store: s, peerID: peerID}
+	out := &Server{srv: srv, store: s, tx: t, peerID: peerID}
 
 	srv.AddTool(
 		mcp.NewTool("get_shared_log",
@@ -82,6 +86,23 @@ func New(s *store.Store, peerID string) *Server {
 			),
 		),
 		out.handleListSharedFiles,
+	)
+
+	srv.AddTool(
+		mcp.NewTool("set_status",
+			mcp.WithDescription(
+				"Tell your pair partner's agent what you're currently working on. "+
+					"A short, ongoing-tense phrase like \"reading cache.go\", "+
+					"\"writing the test harness\", or \"stuck on the auth bug\". "+
+					"Update it whenever you switch contexts so your partner can "+
+					"see what's happening live in the peer roster. The status "+
+					"replaces any previous one."),
+			mcp.WithString("status",
+				mcp.Description("Short ongoing-tense phrase. Empty string clears the status."),
+				mcp.Required(),
+			),
+		),
+		out.handleSetStatus,
 	)
 
 	return out
@@ -176,5 +197,19 @@ func (s *Server) handleListSharedFiles(ctx context.Context, req mcp.CallToolRequ
 	files := s.store.ListFiles(prefix)
 	return mcp.NewToolResultJSON(map[string]any{
 		"files": files,
+	})
+}
+
+func (s *Server) handleSetStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+	status, _ := args["status"].(string)
+	if s.tx == nil {
+		return mcp.NewToolResultError("transport not available"), nil
+	}
+	if err := s.tx.BroadcastStatus(status); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("broadcast: %v", err)), nil
+	}
+	return mcp.NewToolResultJSON(map[string]any{
+		"status": status,
 	})
 }

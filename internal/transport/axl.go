@@ -32,10 +32,11 @@ type AxlTransport struct {
 	myName    string // our friendly handle, included in hello/hello_ack
 	sessionID string // host-assigned identifier for this session
 
-	mu     sync.Mutex
-	peers  map[string]PeerInfo
-	token  string // host: the token we issued on Host()
-	hostID string // joiner: the host we connected to
+	mu       sync.Mutex
+	peers    map[string]PeerInfo
+	token    string // host: the token we issued on Host()
+	hostID   string // joiner: the host we connected to
+	myStatus string // last status we broadcast
 
 	in     chan protocol.WireMessage
 	events chan PeerEvent
@@ -175,6 +176,35 @@ func (a *AxlTransport) sendBytesTo(peerID string, body []byte) error {
 	return nil
 }
 
+// BroadcastStatus updates our status line and sends it to every joined peer.
+// Implemented as a peer_status WireMessage; receivers update their peer
+// table on intake.
+func (a *AxlTransport) BroadcastStatus(status string) error {
+	a.mu.Lock()
+	a.myStatus = status
+	a.mu.Unlock()
+	body, err := protocol.Encode(
+		protocol.KindPeerStatus, a.PeerID(), time.Now().UTC(),
+		protocol.PeerStatusPayload{Status: status},
+	)
+	if err != nil {
+		return err
+	}
+	for _, p := range a.Peers() {
+		if err := a.sendBytesTo(p.ID, body); err != nil {
+			slog.Warn("axl: peer_status send failed", "peer", p.ID, "err", err)
+		}
+	}
+	return nil
+}
+
+// MyStatus returns our last broadcast status (empty if never set).
+func (a *AxlTransport) MyStatus() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.myStatus
+}
+
 // Receive returns the channel of incoming application-level messages.
 // Control messages (hello/hello_ack/goodbye) are handled internally and do
 // not appear here.
@@ -294,6 +324,8 @@ func (a *AxlTransport) dispatch(msg protocol.WireMessage) {
 		a.handleHelloAck(msg)
 	case protocol.KindGoodbye:
 		a.handleGoodbye(msg)
+	case protocol.KindPeerStatus:
+		a.handlePeerStatus(msg)
 	case protocol.KindLogEntry, protocol.KindFileChunk:
 		select {
 		case a.in <- msg:
@@ -362,6 +394,20 @@ func (a *AxlTransport) handleHelloAck(msg protocol.WireMessage) {
 
 func (a *AxlTransport) handleGoodbye(msg protocol.WireMessage) {
 	a.removePeer(msg.PeerID)
+}
+
+func (a *AxlTransport) handlePeerStatus(msg protocol.WireMessage) {
+	var p protocol.PeerStatusPayload
+	if err := json.Unmarshal(msg.Payload, &p); err != nil {
+		slog.Warn("axl: peer_status malformed", "err", err)
+		return
+	}
+	a.mu.Lock()
+	if existing, ok := a.peers[msg.PeerID]; ok {
+		existing.Status = p.Status
+		a.peers[msg.PeerID] = existing
+	}
+	a.mu.Unlock()
 }
 
 func (a *AxlTransport) addPeer(p PeerInfo) {

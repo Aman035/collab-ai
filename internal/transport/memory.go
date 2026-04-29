@@ -51,8 +51,9 @@ type MemTransport struct {
 	in     chan protocol.WireMessage
 	events chan PeerEvent
 
-	mu    sync.Mutex
-	peers []PeerInfo
+	mu       sync.Mutex
+	peers    []PeerInfo
+	myStatus string
 }
 
 func (m *MemTransport) Host(ctx context.Context) (Invite, error) {
@@ -108,6 +109,36 @@ func deliver(t *MemTransport, msg protocol.WireMessage) {
 	case t.in <- msg:
 	default:
 	}
+}
+
+// BroadcastStatus stores our status and updates every peer's view of us.
+// In the in-memory hub, peers see each other directly via Peers(); we
+// don't bounce a wire message — this keeps the test stub simple.
+func (m *MemTransport) BroadcastStatus(status string) error {
+	m.mu.Lock()
+	m.myStatus = status
+	m.mu.Unlock()
+	m.hub.mu.Lock()
+	defer m.hub.mu.Unlock()
+	for id, t := range m.hub.transports {
+		if id == m.id {
+			continue
+		}
+		t.mu.Lock()
+		for i, p := range t.peers {
+			if p.ID == m.id {
+				t.peers[i].Status = status
+			}
+		}
+		t.mu.Unlock()
+	}
+	return nil
+}
+
+func (m *MemTransport) MyStatus() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.myStatus
 }
 
 func (m *MemTransport) Receive() <-chan protocol.WireMessage { return m.in }

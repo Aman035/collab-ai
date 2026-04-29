@@ -31,6 +31,7 @@ type Peer struct {
 	ID       string
 	Self     bool
 	JoinedAt time.Time
+	Status   string // current "what I'm working on" line; empty = no status
 }
 
 // LogEntry is one line in the shared conversation log.
@@ -280,15 +281,21 @@ func (m *model) renderPeers(_ int) string {
 	for _, p := range sortedPeers(m.snap.Peers) {
 		dot := styPeerOther.Render("●")
 		name := styAccent.Render(displayName(p))
-		note := ""
 		if p.Self {
 			dot = styPeerSelf.Render("●")
 			name = styPeerSelf.Render(displayName(p))
-			note = styFaint.Render("  · you")
-		} else {
-			note = styFaint.Render("  · joined " + relTime(p.JoinedAt))
 		}
-		lines = append(lines, dot+"  "+name+note)
+		var meta string
+		if p.Self {
+			meta = styFaint.Render("you")
+		} else {
+			meta = styFaint.Render("joined " + relTime(p.JoinedAt))
+		}
+		row := dot + "  " + name + styFaint.Render("  · ") + meta
+		if p.Status != "" {
+			row += "\n   " + styText.Render(p.Status)
+		}
+		lines = append(lines, row)
 	}
 	return m.renderSection(label, strings.Join(lines, "\n"))
 }

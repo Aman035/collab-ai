@@ -15,11 +15,12 @@ const Version = "0.1.0"
 
 // Wire envelope kinds.
 const (
-	KindHello     = "hello"
-	KindHelloAck  = "hello_ack"
-	KindGoodbye   = "goodbye"
-	KindLogEntry  = "log_entry"
-	KindFileChunk = "file_chunk"
+	KindHello      = "hello"
+	KindHelloAck   = "hello_ack"
+	KindGoodbye    = "goodbye"
+	KindLogEntry   = "log_entry"
+	KindFileChunk  = "file_chunk"
+	KindPeerStatus = "peer_status"
 )
 
 // Roles for log entries.
@@ -87,6 +88,12 @@ type HelloAckPayload struct {
 // GoodbyePayload — sent before clean disconnect.
 type GoodbyePayload struct {
 	Reason string `json:"reason,omitempty"`
+}
+
+// PeerStatusPayload — sender's current "what I'm working on" line. Latest
+// wins per peer; receivers display it in the live peer roster.
+type PeerStatusPayload struct {
+	Status string `json:"status"`
 }
 
 // FileChunkPayload — a file added, changed, or deleted.
