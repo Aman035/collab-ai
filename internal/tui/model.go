@@ -36,11 +36,13 @@ type Peer struct {
 
 // LogEntry is one line in the shared conversation log.
 type LogEntry struct {
-	Timestamp time.Time
-	PeerID    string
-	PeerName  string // resolved from peer table; empty if unknown
-	Role      string // "user" | "assistant"
-	Content   string
+	Timestamp  time.Time
+	PeerID     string
+	PeerName   string // resolved from peer table; empty if unknown
+	Role       string // "user" | "assistant"
+	Content    string
+	Kind       string // "" | "post" | "question" | "answer"
+	TargetPeer string // for questions
 }
 
 // File is one row in the shared-files pane.
@@ -336,7 +338,15 @@ func (m *model) renderLogSized(_ , maxRows int) string {
 		if isYou(e, m.snap) {
 			whoStyled = styPeerSelf.Render("you")
 		}
-		head := styFaint.Render(when) + "  " + whoStyled + styFaint.Render(":")
+		// Render kind tag for non-default entries.
+		var tag string
+		switch e.Kind {
+		case "question":
+			tag = " " + styAccB.Render("?→"+e.TargetPeer)
+		case "answer":
+			tag = " " + styPeerSelf.Render("←answer")
+		}
+		head := styFaint.Render(when) + "  " + whoStyled + tag + styFaint.Render(":")
 		lines = append(lines, head+" "+styText.Render(strings.TrimSpace(e.Content)))
 	}
 	for len(lines) < maxRows {

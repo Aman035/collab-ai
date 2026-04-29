@@ -44,6 +44,16 @@ type WireMessage struct {
 	Timestamp time.Time       `json:"timestamp"`
 }
 
+// EntryKind classifies a log entry beyond the basic "post". Empty value or
+// EntryKindPost means a normal broadcast post (current behavior). Question
+// + Answer let one agent direct a question at a specific peer's agent and
+// receive a tagged response.
+const (
+	EntryKindPost     = "post"
+	EntryKindQuestion = "question"
+	EntryKindAnswer   = "answer"
+)
+
 // LogEntry is a single conversation entry. Doubles as the wire payload for
 // `log_entry` messages and the in-memory representation in the Store.
 type LogEntry struct {
@@ -52,6 +62,12 @@ type LogEntry struct {
 	PeerID    string    `json:"peer_id"`   // originator
 	Role      string    `json:"role"`      // "user" | "assistant"
 	Content   string    `json:"content"`
+
+	// Optional structured fields. Older clients without these fields
+	// continue to work — empty Kind = treat as a regular post.
+	Kind       string `json:"kind,omitempty"`
+	TargetPeer string `json:"target_peer,omitempty"` // handle, set on questions
+	QuestionID string `json:"question_id,omitempty"` // set on answers
 }
 
 // FileMeta indexes a file in ./shared/. Doubles as the in-memory file index

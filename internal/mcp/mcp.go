@@ -89,6 +89,48 @@ func New(s *store.Store, t transport.Transport, peerID string) *Server {
 	)
 
 	srv.AddTool(
+		mcp.NewTool("ask_peer",
+			mcp.WithDescription(
+				"Send a direct question to a specific peer's agent. Use this "+
+					"when you need their input on something — a code review, a "+
+					"design opinion, a status update — instead of just "+
+					"broadcasting via post_to_log. The peer's agent sees the "+
+					"question on their next get_shared_log call (kind=\"question\", "+
+					"target_peer=their handle) and is expected to call "+
+					"respond_to_peer with the answer."),
+			mcp.WithString("target_peer",
+				mcp.Description("The peer's friendly handle (e.g. \"clever-otter\"). Get the list from list_peers context — typically you already know who the peers are from the prior log."),
+				mcp.Required(),
+			),
+			mcp.WithString("question",
+				mcp.Description("The question text. Be specific — your peer's agent decides whether to answer based on this alone."),
+				mcp.Required(),
+			),
+		),
+		out.handleAskPeer,
+	)
+
+	srv.AddTool(
+		mcp.NewTool("respond_to_peer",
+			mcp.WithDescription(
+				"Answer a question another peer's agent directed at you. Call "+
+					"this when get_shared_log returned an entry with "+
+					"kind=\"question\" and target_peer set to YOUR handle — "+
+					"that's a direct request you're expected to address. "+
+					"Use the question entry's id as question_id."),
+			mcp.WithString("question_id",
+				mcp.Description("The id of the question entry you're answering."),
+				mcp.Required(),
+			),
+			mcp.WithString("answer",
+				mcp.Description("Your answer text."),
+				mcp.Required(),
+			),
+		),
+		out.handleRespondToPeer,
+	)
+
+	srv.AddTool(
 		mcp.NewTool("set_status",
 			mcp.WithDescription(
 				"Tell your pair partner's agent what you're currently working on. "+
@@ -211,5 +253,61 @@ func (s *Server) handleSetStatus(ctx context.Context, req mcp.CallToolRequest) (
 	}
 	return mcp.NewToolResultJSON(map[string]any{
 		"status": status,
+	})
+}
+
+func (s *Server) handleAskPeer(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+	target, _ := args["target_peer"].(string)
+	question, _ := args["question"].(string)
+	if target == "" || question == "" {
+		return mcp.NewToolResultError("target_peer and question are required"), nil
+	}
+	now := time.Now().UTC()
+	id := ulid.MustNew(ulid.Timestamp(now), rand.Reader).String()
+	entry := protocol.LogEntry{
+		ID:         id,
+		Timestamp:  now,
+		PeerID:     s.peerID,
+		Role:       protocol.RoleAssistant,
+		Content:    question,
+		Kind:       protocol.EntryKindQuestion,
+		TargetPeer: target,
+	}
+	if err := s.store.AppendEntry(entry, store.SourceLocal); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("append: %v", err)), nil
+	}
+	return mcp.NewToolResultJSON(map[string]any{
+		"question_id": id,
+		"target_peer": target,
+		"timestamp":   now.Format(time.RFC3339),
+	})
+}
+
+func (s *Server) handleRespondToPeer(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+	questionID, _ := args["question_id"].(string)
+	answer, _ := args["answer"].(string)
+	if questionID == "" || answer == "" {
+		return mcp.NewToolResultError("question_id and answer are required"), nil
+	}
+	now := time.Now().UTC()
+	id := ulid.MustNew(ulid.Timestamp(now), rand.Reader).String()
+	entry := protocol.LogEntry{
+		ID:         id,
+		Timestamp:  now,
+		PeerID:     s.peerID,
+		Role:       protocol.RoleAssistant,
+		Content:    answer,
+		Kind:       protocol.EntryKindAnswer,
+		QuestionID: questionID,
+	}
+	if err := s.store.AppendEntry(entry, store.SourceLocal); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("append: %v", err)), nil
+	}
+	return mcp.NewToolResultJSON(map[string]any{
+		"answer_id":   id,
+		"question_id": questionID,
+		"timestamp":   now.Format(time.RFC3339),
 	})
 }

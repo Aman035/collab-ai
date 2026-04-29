@@ -290,11 +290,13 @@ func sessionToTUI(sess *session) tui.Snapshot {
 	entries := make([]tui.LogEntry, 0, len(rawEntries))
 	for _, e := range rawEntries {
 		entries = append(entries, tui.LogEntry{
-			Timestamp: e.Timestamp,
-			PeerID:    e.PeerID,
-			PeerName:  nameByID[e.PeerID],
-			Role:      e.Role,
-			Content:   e.Content,
+			Timestamp:  e.Timestamp,
+			PeerID:     e.PeerID,
+			PeerName:   nameByID[e.PeerID],
+			Role:       e.Role,
+			Content:    e.Content,
+			Kind:       e.Kind,
+			TargetPeer: e.TargetPeer,
 		})
 	}
 
@@ -439,6 +441,16 @@ and you should use them **proactively** without being asked:
   ` + "`stuck on the auth flow`" + `. Update it whenever you switch contexts
   so your partner sees what's happening live in their peer roster. Set it
   early and often — silence reads as "agent is offline".
+- **` + "`ask_peer`" + `** — send a direct question to a *specific* peer's
+  agent. Use this when you want their input on something, not just to
+  share. Returns a question_id you can reference later.
+- **` + "`respond_to_peer`" + `** — answer a question another peer's agent
+  directed at you. **Important:** when ` + "`get_shared_log`" + ` returns
+  an entry with ` + "`kind: \"question\"`" + ` and
+  ` + "`target_peer`" + ` equal to **your** handle (` + "`%[1]s`" + `),
+  that's a direct request you're expected to address. Read it, do the
+  work, then call ` + "`respond_to_peer`" + ` with the question's id and
+  your answer. Don't ignore it — the asker is waiting.
 
 ## Conventions
 
