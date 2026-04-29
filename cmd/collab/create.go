@@ -21,7 +21,7 @@ import (
 )
 
 func createCmd() *cobra.Command {
-	var nameFlag, agent string
+	var nameFlag, agent, role string
 	var detach bool
 	cmd := &cobra.Command{
 		Use:   "create [your-name]",
@@ -30,23 +30,27 @@ func createCmd() *cobra.Command {
 			"MCP server, writes a child .mcp.json next to the session dir, and\n" +
 			"opens a TUI from which you can launch your AI agent.\n\n" +
 			"Your handle: positional arg, then --name flag, then $COLLAB_NAME,\n" +
-			"then a friendly auto-generated default.",
+			"then a friendly auto-generated default.\n\n" +
+			"Roles (optional): pair (default) | architect | implementer | reviewer.\n" +
+			"A role changes the CLAUDE.md the launched agent reads, giving the two\n" +
+			"sides complementary jobs instead of identical ones.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
 			name := firstNonEmpty(positional(args, 0), nameFlag, os.Getenv("COLLAB_NAME"))
-			return runCreate(ctx, name, agent, detach)
+			return runCreate(ctx, name, agent, role, detach)
 		},
 	}
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Your handle (overrides positional arg)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	cmd.Flags().StringVar(&role, "role", "pair", "Session role: pair | architect | implementer | reviewer")
 	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
 }
 
 func joinCmd() *cobra.Command {
-	var nameFlag, agent string
+	var nameFlag, agent, role string
 	var detach bool
 	cmd := &cobra.Command{
 		Use:   "join <invite-code> [your-name]",
@@ -56,11 +60,12 @@ func joinCmd() *cobra.Command {
 			ctx, cancel := signalContext()
 			defer cancel()
 			name := firstNonEmpty(positional(args, 1), nameFlag, os.Getenv("COLLAB_NAME"))
-			return runJoin(ctx, args[0], name, agent, detach)
+			return runJoin(ctx, args[0], name, agent, role, detach)
 		},
 	}
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Your handle (overrides positional arg)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	cmd.Flags().StringVar(&role, "role", "pair", "Session role: pair | architect | implementer | reviewer")
 	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
 }
@@ -82,7 +87,7 @@ func positional(args []string, i int) string {
 	return ""
 }
 
-func runCreate(ctx context.Context, name, agent string, detach bool) error {
+func runCreate(ctx context.Context, name, agent, role string, detach bool) error {
 	sessionID, sharedDir, err := allocateSessionDir()
 	if err != nil {
 		return err
@@ -119,7 +124,7 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 		return err
 	}
 	defer cleanupMCP()
-	if err := writeSessionPrompt(sessionRoot, sessionID, name, "host", invite.Code); err != nil {
+	if err := writeSessionPrompt(sessionRoot, sessionID, name, "host", role, invite.Code); err != nil {
 		return err
 	}
 	if err := persistInvite(sessionRoot, invite.Code); err != nil {
@@ -150,7 +155,7 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 	return runTUI(ctx, agent, sessionRoot, sess)
 }
 
-func runJoin(ctx context.Context, code, name, agent string, detach bool) error {
+func runJoin(ctx context.Context, code, name, agent, role string, detach bool) error {
 	invite, err := transport.ParseInvite(code)
 	if err != nil {
 		return fmt.Errorf("invite: %w", err)
@@ -190,7 +195,7 @@ func runJoin(ctx context.Context, code, name, agent string, detach bool) error {
 		return err
 	}
 	defer cleanupMCP()
-	if err := writeSessionPrompt(sessionRoot, sessionID, name, "joiner", ""); err != nil {
+	if err := writeSessionPrompt(sessionRoot, sessionID, name, "joiner", role, ""); err != nil {
 		return err
 	}
 
@@ -371,15 +376,48 @@ func registerUserScopeMCP(sessionID, mcpURL string) (cleanup func(), err error) 
 	}, nil
 }
 
+// roleBlurb returns role-specific guidance appended to CLAUDE.md so two
+// peers can have complementary jobs ("you write specs, your partner
+// implements") instead of duplicating effort.
+func roleBlurb(role string) string {
+	switch role {
+	case "architect":
+		return "\n## Your role: architect\n\n" +
+			"You plan; your partner implements. Write specs and design notes\n" +
+			"to `./shared/PLAN.md` and post short summaries to the shared log.\n" +
+			"Do **not** write implementation code in this session — that's\n" +
+			"the implementer's job. If you need a code-level question answered,\n" +
+			"use `ask_peer` once it's available; otherwise `post_to_log` is\n" +
+			"how you ping them.\n"
+	case "implementer":
+		return "\n## Your role: implementer\n\n" +
+			"Your partner (the architect) writes plans and specs to\n" +
+			"`./shared/PLAN.md` and posts updates via the shared log. Your\n" +
+			"job: read those, execute, and write code into `./shared/`. If\n" +
+			"the spec is ambiguous, ask via `post_to_log` — don't silently\n" +
+			"guess. Don't redesign the architecture; flag concerns to the\n" +
+			"architect through the log.\n"
+	case "reviewer":
+		return "\n## Your role: reviewer\n\n" +
+			"Your partner writes code into `./shared/`. Your job: read their\n" +
+			"files, find issues, and post structured feedback to the shared\n" +
+			"log (line numbers, severity, suggested fix). Do **not** write\n" +
+			"production code yourself; if you must demonstrate, write to\n" +
+			"`./shared/review/` so it's clearly distinct.\n"
+	default:
+		return ""
+	}
+}
+
 // writeSessionPrompt drops a CLAUDE.md into the session dir so the launched
 // agent reads it as project context at session start. Tells the agent it's
-// in a pairing session, what tools are available, and when to use them — so
-// the user doesn't have to nudge "use the post_to_log tool" by hand.
-func writeSessionPrompt(sessionRoot, sessionID, myHandle, role, inviteCode string) error {
+// in a pairing session, what tools are available, when to use them, and
+// (if a role was chosen) what its specialization is.
+func writeSessionPrompt(sessionRoot, sessionID, myHandle, side, role, inviteCode string) error {
 	const promptTmpl = `# collab-ai pairing session
 
 You are the AI agent for **%[1]s** in a live pairing session
-(` + "`%[2]s`" + `, role: ` + "`%[3]s`" + `) with another developer who's
+(` + "`%[2]s`" + `, side: ` + "`%[3]s`" + `) with another developer who's
 using their own AI agent through collab-ai.
 
 The ` + "`collab-ai`" + ` MCP server is connected — three tools are available
@@ -415,15 +453,16 @@ and you should use them **proactively** without being asked:
 
 - Session: ` + "`%[2]s`" + `
 - Your handle: ` + "`%[1]s`" + `
-- Your role: ` + "`%[3]s`" + `
+- Your side: ` + "`%[3]s`" + `
+- Your role: ` + "`%[4]s`" + `
 - Shared directory: ` + "`./shared/`" + `
-%[4]s`
+%[5]s%[6]s`
 
 	var inviteSection string
 	if inviteCode != "" {
 		inviteSection = "- Invite code (share to add another peer): `" + inviteCode + "`\n"
 	}
-	body := fmt.Sprintf(promptTmpl, myHandle, sessionID, role, inviteSection)
+	body := fmt.Sprintf(promptTmpl, myHandle, sessionID, side, role, inviteSection, roleBlurb(role))
 	path := filepath.Join(sessionRoot, "CLAUDE.md")
 	return os.WriteFile(path, []byte(body), 0o644)
 }
