@@ -70,9 +70,32 @@ func New(s *store.Store, peerID string) *Server {
 }
 
 // ServeStdio runs the MCP server on stdio. Blocks until ctx is cancelled or
-// the agent disconnects.
+// the agent disconnects. Used when collab-ai is itself spawned as an MCP
+// child by another process (Claude Code, Cursor, etc).
 func (s *Server) ServeStdio(ctx context.Context) error {
 	return server.ServeStdio(s.srv)
+}
+
+// ServeHTTP runs the MCP server as a streamable-HTTP endpoint at addr/mcp.
+// Used when collab-ai is the parent and launches the AI agent as a child;
+// the agent's MCP client connects back over loopback HTTP. Blocks until ctx
+// is cancelled.
+func (s *Server) ServeHTTP(ctx context.Context, addr string) error {
+	httpSrv := server.NewStreamableHTTPServer(s.srv,
+		server.WithEndpointPath("/mcp"),
+		server.WithStateLess(true),
+	)
+	errCh := make(chan error, 1)
+	go func() { errCh <- httpSrv.Start(addr) }()
+	select {
+	case <-ctx.Done():
+		shutCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = httpSrv.Shutdown(shutCtx)
+		return nil
+	case err := <-errCh:
+		return err
+	}
 }
 
 func (s *Server) handleGetSharedLog(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

@@ -1,0 +1,285 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/Aman035/collab-ai/internal/handle"
+	"github.com/Aman035/collab-ai/internal/mcp"
+	"github.com/Aman035/collab-ai/internal/state"
+	"github.com/Aman035/collab-ai/internal/store"
+	collabsync "github.com/Aman035/collab-ai/internal/sync"
+	"github.com/Aman035/collab-ai/internal/transport"
+)
+
+func createCmd() *cobra.Command {
+	var name, agent string
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Start a new pairing session and launch your AI agent",
+		Long: "Hosts a new collab-ai session under ~/collab-ai/<id>/, exposes\n" +
+			"an HTTP MCP server, writes a child .mcp.json next to the session\n" +
+			"dir, and launches your AI agent as a subprocess.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx, cancel := signalContext()
+			defer cancel()
+			return runCreate(ctx, name, agent)
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: auto-generated)")
+	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	return cmd
+}
+
+func connectCmd() *cobra.Command {
+	var name, agent string
+	cmd := &cobra.Command{
+		Use:   "connect <invite-code>",
+		Short: "Join an existing pairing session and launch your AI agent",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := signalContext()
+			defer cancel()
+			return runConnect(ctx, args[0], name, agent)
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: auto-generated)")
+	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	return cmd
+}
+
+func runCreate(ctx context.Context, name, agent string) error {
+	sessionID, sharedDir, err := allocateSessionDir()
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		name = pickHandle()
+	}
+
+	ax := transport.NewAxlTransport()
+	ax.SetIdentity(name, sessionID)
+	fmt.Fprintln(os.Stderr, "→ bringing up Axl daemon...")
+	invite, err := ax.Host(ctx)
+	if err != nil {
+		return fmt.Errorf("host: %w", err)
+	}
+	defer ax.Close()
+
+	st := store.New()
+	defer st.Close()
+	engine := collabsync.New(st, ax, ax.PeerID(), sharedDir)
+	go func() {
+		if err := engine.Run(ctx); err != nil && ctx.Err() == nil {
+			fmt.Fprintln(os.Stderr, "sync engine stopped:", err)
+		}
+	}()
+
+	mcpURL, mcpStop, err := startMCPHTTP(ctx, st, ax.PeerID())
+	if err != nil {
+		return err
+	}
+	defer mcpStop()
+
+	sessionRoot := filepath.Dir(sharedDir)
+	if err := writeChildMCPConfig(sessionRoot, mcpURL); err != nil {
+		return err
+	}
+
+	printCreateBanner(invite, sessionID, name, sharedDir, mcpURL)
+
+	sess := newSession("host", ax.PeerID(), sharedDir, invite.Code, st, ax)
+	sess.id = sessionID
+	sess.myName = name
+	go sess.trackPeerEvents(func(ev transport.PeerEvent) {
+		logPeerEvent(ev)
+		if ev.Kind == transport.PeerJoined {
+			_ = engine.Replay(ev.Peer.ID)
+		}
+	})
+
+	stateStop := make(chan struct{})
+	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
+	defer close(stateStop)
+
+	return launchAgent(ctx, agent, sessionRoot)
+}
+
+func runConnect(ctx context.Context, code, name, agent string) error {
+	invite, err := transport.ParseInvite(code)
+	if err != nil {
+		return fmt.Errorf("invite: %w", err)
+	}
+	sessionID, sharedDir, err := allocateSessionDir()
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		name = pickHandle()
+	}
+
+	ax := transport.NewAxlTransport()
+	ax.SetIdentity(name, "")
+	fmt.Fprintln(os.Stderr, "→ bringing up Axl daemon and joining...")
+	if err := ax.Join(ctx, invite); err != nil {
+		return fmt.Errorf("join: %w", err)
+	}
+	defer ax.Close()
+
+	st := store.New()
+	defer st.Close()
+	engine := collabsync.New(st, ax, ax.PeerID(), sharedDir)
+	go func() {
+		if err := engine.Run(ctx); err != nil && ctx.Err() == nil {
+			fmt.Fprintln(os.Stderr, "sync engine stopped:", err)
+		}
+	}()
+
+	mcpURL, mcpStop, err := startMCPHTTP(ctx, st, ax.PeerID())
+	if err != nil {
+		return err
+	}
+	defer mcpStop()
+
+	sessionRoot := filepath.Dir(sharedDir)
+	if err := writeChildMCPConfig(sessionRoot, mcpURL); err != nil {
+		return err
+	}
+
+	printConnectBanner(invite, sessionID, name, sharedDir, mcpURL)
+
+	sess := newSession("joiner", ax.PeerID(), sharedDir, "", st, ax)
+	sess.id = sessionID
+	sess.myName = name
+	go sess.trackPeerEvents(logPeerEvent)
+
+	// Adopt the host's session ID once hello_ack arrives.
+	go func() {
+		for range 100 {
+			if id := ax.SessionID(); id != "" && id != sess.id {
+				sess.id = id
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	stateStop := make(chan struct{})
+	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
+	defer close(stateStop)
+
+	return launchAgent(ctx, agent, sessionRoot)
+}
+
+// pickHandle resolves the user's handle: $COLLAB_NAME wins if set,
+// otherwise we generate a friendly one.
+func pickHandle() string {
+	if v := os.Getenv("COLLAB_NAME"); v != "" {
+		return v
+	}
+	return handle.New()
+}
+
+// startMCPHTTP starts the MCP HTTP server on a free local port and returns
+// the URL plus a cleanup func.
+func startMCPHTTP(ctx context.Context, st *store.Store, peerID string) (url string, stop func(), err error) {
+	port, err := freeLocalPort()
+	if err != nil {
+		return "", nil, fmt.Errorf("pick mcp port: %w", err)
+	}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	mcpURL := fmt.Sprintf("http://%s/mcp", addr)
+
+	srv := mcp.New(st, peerID)
+	srvCtx, cancel := context.WithCancel(ctx)
+	go func() { _ = srv.ServeHTTP(srvCtx, addr) }()
+	return mcpURL, cancel, nil
+}
+
+// writeChildMCPConfig drops a .mcp.json next to the session dir so the
+// agent (when launched with cwd=sessionRoot) auto-discovers our HTTP MCP.
+func writeChildMCPConfig(sessionRoot, mcpURL string) error {
+	cfg := fmt.Sprintf(`{
+  "mcpServers": {
+    "collab-ai": {
+      "type": "http",
+      "url": "%s"
+    }
+  }
+}
+`, mcpURL)
+	path := filepath.Join(sessionRoot, ".mcp.json")
+	return os.WriteFile(path, []byte(cfg), 0o600)
+}
+
+// launchAgent execs the user's chosen agent in the session dir so it picks
+// up the .mcp.json we just wrote. Blocks until the agent exits.
+func launchAgent(ctx context.Context, agent, cwd string) error {
+	switch agent {
+	case "", "claude":
+		bin, err := exec.LookPath("claude")
+		if err != nil {
+			return fmt.Errorf("claude binary not on PATH; install Claude Code first (https://claude.com/claude-code)")
+		}
+		cmd := exec.CommandContext(ctx, bin)
+		cmd.Dir = cwd
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil && ctx.Err() == nil {
+			return fmt.Errorf("agent exited: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown agent %q (only \"claude\" is supported in v0.1)", agent)
+	}
+}
+
+func freeLocalPort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func printCreateBanner(invite transport.Invite, sessionID, name, sharedDir, mcpURL string) {
+	c := newPalette(os.Stderr)
+	w := os.Stderr
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.bold("collab-ai")+c.dim(" — created session ")+c.accent(sessionID))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  You are:     ")+c.accent(name))
+	fmt.Fprintln(w, c.dim("  Shared dir:  ")+sharedDir)
+	fmt.Fprintln(w, c.dim("  MCP server:  ")+mcpURL)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Invite for collaborators:"))
+	fmt.Fprintln(w, "    "+c.accent(invite.Code))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Launching agent…  (close it to end the session)"))
+	fmt.Fprintln(w)
+}
+
+func printConnectBanner(invite transport.Invite, sessionID, name, sharedDir, mcpURL string) {
+	c := newPalette(os.Stderr)
+	w := os.Stderr
+	_ = sessionID
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.bold("collab-ai")+c.dim(" — joining session"))
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  You are:     ")+c.accent(name))
+	fmt.Fprintln(w, c.dim("  Host peer:   ")+shortPeer(invite.PeerID))
+	fmt.Fprintln(w, c.dim("  Shared dir:  ")+sharedDir)
+	fmt.Fprintln(w, c.dim("  MCP server:  ")+mcpURL)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, c.dim("  Launching agent…  (close it to leave the session)"))
+	fmt.Fprintln(w)
+}

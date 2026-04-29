@@ -21,6 +21,8 @@ func main() {
 		Use:   "collab-ai",
 		Short: "Multiplayer for AI coding agents — peer-to-peer over Gensyn Axl",
 	}
+	root.AddCommand(createCmd())
+	root.AddCommand(connectCmd())
 	root.AddCommand(hostCmd())
 	root.AddCommand(joinCmd())
 	root.AddCommand(statusCmd())
