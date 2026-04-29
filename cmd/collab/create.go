@@ -21,43 +21,65 @@ import (
 )
 
 func createCmd() *cobra.Command {
-	var name, agent string
+	var nameFlag, agent string
 	var detach bool
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create [your-name]",
 		Short: "Start a new pairing session and launch your AI agent",
-		Long: "Hosts a new collab-ai session under ~/collab-ai/<id>/, exposes\n" +
-			"an HTTP MCP server, writes a child .mcp.json next to the session\n" +
-			"dir, and opens a TUI from which you can launch your AI agent.",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Long: "Hosts a new collab session under ~/collab/<id>/, exposes an HTTP\n" +
+			"MCP server, writes a child .mcp.json next to the session dir, and\n" +
+			"opens a TUI from which you can launch your AI agent.\n\n" +
+			"Your handle: positional arg, then --name flag, then $COLLAB_NAME,\n" +
+			"then a friendly auto-generated default.",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
+			name := firstNonEmpty(positional(args, 0), nameFlag, os.Getenv("COLLAB_NAME"))
 			return runCreate(ctx, name, agent, detach)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: auto-generated)")
+	cmd.Flags().StringVar(&nameFlag, "name", "", "Your handle (overrides positional arg)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
 	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
 }
 
 func connectCmd() *cobra.Command {
-	var name, agent string
+	var nameFlag, agent string
 	var detach bool
 	cmd := &cobra.Command{
-		Use:   "connect <invite-code>",
+		Use:   "connect <invite-code> [your-name]",
 		Short: "Join an existing pairing session and launch your AI agent",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
+			name := firstNonEmpty(positional(args, 1), nameFlag, os.Getenv("COLLAB_NAME"))
 			return runConnect(ctx, args[0], name, agent, detach)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "Your handle (default: auto-generated)")
+	cmd.Flags().StringVar(&nameFlag, "name", "", "Your handle (overrides positional arg)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
 	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
+}
+
+// firstNonEmpty returns the first non-empty string, or "" if all empty.
+func firstNonEmpty(v ...string) string {
+	for _, s := range v {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func positional(args []string, i int) string {
+	if i < len(args) {
+		return args[i]
+	}
+	return ""
 }
 
 func runCreate(ctx context.Context, name, agent string, detach bool) error {
@@ -65,9 +87,7 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 	if err != nil {
 		return err
 	}
-	if name == "" {
-		name = pickHandle()
-	}
+	name = pickHandle(name)
 
 	ax := transport.NewAxlTransport()
 	ax.SetIdentity(name, sessionID)
@@ -137,9 +157,7 @@ func runConnect(ctx context.Context, code, name, agent string, detach bool) erro
 	if err != nil {
 		return err
 	}
-	if name == "" {
-		name = pickHandle()
-	}
+	name = pickHandle(name)
 
 	ax := transport.NewAxlTransport()
 	ax.SetIdentity(name, "")
@@ -261,11 +279,11 @@ func sessionToTUI(sess *session) tui.Snapshot {
 	}
 }
 
-// pickHandle resolves the user's handle: $COLLAB_NAME wins if set,
-// otherwise we generate a friendly one.
-func pickHandle() string {
-	if v := os.Getenv("COLLAB_NAME"); v != "" {
-		return v
+// pickHandle returns name unchanged if set, otherwise a fresh fun-name. The
+// merge of positional / --name / $COLLAB_NAME happens at the cobra layer.
+func pickHandle(name string) string {
+	if name != "" {
+		return name
 	}
 	return handle.New()
 }
