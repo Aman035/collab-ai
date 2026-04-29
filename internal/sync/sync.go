@@ -101,6 +101,58 @@ func (e *Engine) Run(ctx context.Context) error {
 	}
 }
 
+// Replay sends every existing log entry and file from the local store to a
+// single peer. Called by the host when a fresh joiner connects so they
+// arrive with the full session context — without it, late joiners would
+// only see messages and files created after their handshake.
+//
+// Log entries replay through SendTo with their original PeerID; the
+// receiver's CRDT (G-Set on log, LWW-Register on files) handles dedup
+// and ordering correctly. File contents are read from disk on demand.
+func (e *Engine) Replay(peerID string) error {
+	for _, entry := range e.store.EntriesSince(time.Time{}) {
+		raw, err := json.Marshal(entry)
+		if err != nil {
+			continue
+		}
+		_ = e.transport.SendTo(peerID, protocol.WireMessage{
+			Kind:      protocol.KindLogEntry,
+			Payload:   raw,
+			PeerID:    entry.PeerID,
+			Timestamp: entry.Timestamp,
+		})
+	}
+	if e.sharedDir == "" {
+		return nil
+	}
+	for _, meta := range e.store.ListFiles("") {
+		abs := filepath.Join(e.sharedDir, meta.Path)
+		content, err := os.ReadFile(abs)
+		if err != nil {
+			slog.Warn("sync: replay read", "path", meta.Path, "err", err)
+			continue
+		}
+		if len(content) > shareddir.MaxFileBytes {
+			continue
+		}
+		payload, err := json.Marshal(protocol.FileChunkPayload{
+			Path:    meta.Path,
+			Content: content,
+			Hash:    meta.Hash,
+		})
+		if err != nil {
+			continue
+		}
+		_ = e.transport.SendTo(peerID, protocol.WireMessage{
+			Kind:      protocol.KindFileChunk,
+			Payload:   payload,
+			PeerID:    meta.PeerID,
+			Timestamp: meta.ModTime,
+		})
+	}
+	return nil
+}
+
 // handleLocalChange broadcasts log_entry messages for local-source store
 // changes. File changes don't fan out via the store-change channel — the
 // store carries metadata only; content travels in file_chunk messages

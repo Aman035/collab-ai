@@ -52,6 +52,10 @@ type Transport interface {
 	// (best-effort; logs and continues on per-peer failures).
 	Send(msg protocol.WireMessage) error
 
+	// SendTo delivers a WireMessage to a specific peer. Used by the Sync
+	// Engine to replay existing state to a freshly-joined peer.
+	SendTo(peerID string, msg protocol.WireMessage) error
+
 	// Receive returns inbound WireMessages. Control messages
 	// (hello/hello_ack/goodbye) are handled by the transport itself and
 	// are not surfaced on this channel.

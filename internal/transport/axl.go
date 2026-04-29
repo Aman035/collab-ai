@@ -127,6 +127,15 @@ func (a *AxlTransport) Join(ctx context.Context, invite Invite) error {
 	return nil
 }
 
+// SendTo delivers msg to a single peer.
+func (a *AxlTransport) SendTo(peerID string, msg protocol.WireMessage) error {
+	body, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return a.sendBytesTo(peerID, body)
+}
+
 // Send broadcasts to every joined peer.
 func (a *AxlTransport) Send(msg protocol.WireMessage) error {
 	bytes, err := json.Marshal(msg)

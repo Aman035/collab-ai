@@ -76,21 +76,38 @@ func (m *MemTransport) Send(msg protocol.WireMessage) error {
 	}
 	m.hub.mu.Unlock()
 	for _, t := range targets {
-		select {
-		case t.in <- msg:
-		default:
-			// receiver full; drop oldest, then push
-			select {
-			case <-t.in:
-			default:
-			}
-			select {
-			case t.in <- msg:
-			default:
-			}
-		}
+		deliver(t, msg)
 	}
 	return nil
+}
+
+// SendTo delivers msg to a single peer. Drops silently if no such peer is
+// in the hub — matches Send's best-effort semantics.
+func (m *MemTransport) SendTo(peerID string, msg protocol.WireMessage) error {
+	m.hub.mu.Lock()
+	t, ok := m.hub.transports[peerID]
+	m.hub.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	deliver(t, msg)
+	return nil
+}
+
+func deliver(t *MemTransport, msg protocol.WireMessage) {
+	select {
+	case t.in <- msg:
+		return
+	default:
+	}
+	select {
+	case <-t.in:
+	default:
+	}
+	select {
+	case t.in <- msg:
+	default:
+	}
 }
 
 func (m *MemTransport) Receive() <-chan protocol.WireMessage { return m.in }

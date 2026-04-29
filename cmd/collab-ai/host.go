@@ -71,7 +71,14 @@ func runHost(ctx context.Context, dir, name string) error {
 	sess := newSession("host", ax.PeerID(), sharedDir, invite.Code, st, ax)
 	sess.id = sessionID
 	sess.myName = name
-	go sess.trackPeerEvents(logPeerEvent)
+	go sess.trackPeerEvents(func(ev transport.PeerEvent) {
+		logPeerEvent(ev)
+		if ev.Kind == transport.PeerJoined {
+			if err := engine.Replay(ev.Peer.ID); err != nil {
+				fmt.Fprintln(os.Stderr, "replay failed:", err)
+			}
+		}
+	})
 
 	stateStop := make(chan struct{})
 	go state.NewWriter(sess.snapshot, time.Second).Run(stateStop)
