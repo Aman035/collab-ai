@@ -6,7 +6,7 @@
 # Detects OS+arch and downloads the matching `collab` binary from the latest
 # GitHub Release. Verifies the SHA-256 checksum, places it on a writable PATH
 # location. The Gensyn Axl daemon is NOT installed here — it's auto-built
-# into ~/.collab/bin/axl-node on first `collab create` / `collab connect`.
+# into ~/.collab/bin/axl-node on first `collab create` / `collab join`.
 #
 # Overrides:
 #   COLLAB_VERSION=v0.2.0   pin a specific release
@@ -86,7 +86,7 @@ cat >&2 <<EOF
 
 Next:
   $ collab create               # host a new pairing session
-  $ collab connect COLLAB-...   # join one
+  $ collab join COLLAB-...   # join one
 
 On first run, collab auto-builds the Gensyn Axl daemon into
 ~/.collab/bin/axl-node. Requires \`git\` and \`go\` for that one-time step.

@@ -48,7 +48,7 @@ the invite, `a` to launch your AI agent, `q` to quit.
 **Join from another machine (or another tab):**
 
 ```bash
-collab connect COLLAB-paste-the-invite-here
+collab join COLLAB-paste-the-invite-here
 ```
 
 Same TUI, your own handle, no invite to share. Press `a` and the agent
@@ -59,9 +59,8 @@ existing context, `list_shared_files` reports anything in `./shared/`.
 
 - `collab status` — peers + log/file counts for the running session.
 - `collab export --out session.json` — dump the conversation log.
-- `collab host` / `collab join INVITE` — low-level escape hatches that run
-  collab as a stdio MCP server (used when something else, like a
-  hand-edited `.mcp.json`, spawns it).
+- `collab help <verb>` — detailed help for any subcommand.
+- `collab version` — build info.
 
 ## What syncs
 

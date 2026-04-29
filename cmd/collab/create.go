@@ -45,18 +45,18 @@ func createCmd() *cobra.Command {
 	return cmd
 }
 
-func connectCmd() *cobra.Command {
+func joinCmd() *cobra.Command {
 	var nameFlag, agent string
 	var detach bool
 	cmd := &cobra.Command{
-		Use:   "connect <invite-code> [your-name]",
+		Use:   "join <invite-code> [your-name]",
 		Short: "Join an existing pairing session and launch your AI agent",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
 			name := firstNonEmpty(positional(args, 1), nameFlag, os.Getenv("COLLAB_NAME"))
-			return runConnect(ctx, args[0], name, agent, detach)
+			return runJoin(ctx, args[0], name, agent, detach)
 		},
 	}
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Your handle (overrides positional arg)")
@@ -150,7 +150,7 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 	return runTUI(ctx, agent, sessionRoot, sess)
 }
 
-func runConnect(ctx context.Context, code, name, agent string, detach bool) error {
+func runJoin(ctx context.Context, code, name, agent string, detach bool) error {
 	invite, err := transport.ParseInvite(code)
 	if err != nil {
 		return fmt.Errorf("invite: %w", err)
@@ -195,7 +195,7 @@ func runConnect(ctx context.Context, code, name, agent string, detach bool) erro
 	}
 
 	if detach {
-		printConnectBanner(invite, sessionID, name, sharedDir, mcpURL)
+		printJoinBanner(invite, sessionID, name, sharedDir, mcpURL)
 	}
 
 	sess := newSession("joiner", ax.PeerID(), sharedDir, "", st, ax)
@@ -475,7 +475,7 @@ func printCreateBanner(invite transport.Invite, sessionID, name, sharedDir, mcpU
 	fmt.Fprintln(w)
 }
 
-func printConnectBanner(invite transport.Invite, sessionID, name, sharedDir, mcpURL string) {
+func printJoinBanner(invite transport.Invite, sessionID, name, sharedDir, mcpURL string) {
 	c := newPalette(os.Stderr)
 	w := os.Stderr
 	_ = sessionID
