@@ -181,41 +181,67 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // ───────── view ─────────
 
 const (
-	minBodyWidth = 60
-	twoColCutoff = 100 // wider than this and we go side-by-side for peers + log
+	minInnerWidth = 60
+	twoColCutoff  = 100 // inner width above which peers + log go side-by-side
+	// styFrame is RoundedBorder (1) + Padding(1,2) (2) on each side = 6 cols
+	// of horizontal overhead. The outer Padding(1,2) wrap adds another 4.
+	frameOverhead = 6
+	outerOverhead = 4
 )
+
+// pickHeights decides how tall the log + files panes should grow so the TUI
+// fills the available terminal height instead of stranding empty rows below.
+func (m *model) pickHeights(reservedRows int) (logH int) {
+	// Total non-pane rows: header (1), blanks (~6), invite (2), peers (~3),
+	// files (~2), footer (1). Plus reservedRows for outer padding/border.
+	const fixedRows = 14
+	avail := m.height - fixedRows - reservedRows
+	if avail < 6 {
+		return 6
+	}
+	if avail > 24 {
+		return 24
+	}
+	return avail
+}
 
 func (m *model) View() string {
 	if m.width == 0 {
 		return ""
 	}
-	bodyW := max(min(m.width-4, 120), minBodyWidth)
+	frameW := m.width - outerOverhead
+	if frameW < minInnerWidth+frameOverhead {
+		frameW = minInnerWidth + frameOverhead
+	}
+	innerW := frameW - frameOverhead
+
+	logH := m.pickHeights(0)
 
 	var sections []string
-
-	sections = append(sections, m.renderHeader(bodyW))
+	sections = append(sections, m.renderHeader(innerW))
 	sections = append(sections, "")
-	sections = append(sections, m.renderInvite(bodyW))
+	sections = append(sections, m.renderInvite(innerW))
 
-	if bodyW >= twoColCutoff {
-		left := m.renderPeers(bodyW/2 - 1)
-		right := m.renderLog(bodyW - bodyW/2 - 1)
+	if innerW >= twoColCutoff {
+		colW := innerW/2 - 1
+		left := m.renderPeers(colW)
+		right := m.renderLogSized(colW, logH)
 		sections = append(sections, "")
 		sections = append(sections, lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right))
 	} else {
 		sections = append(sections, "")
-		sections = append(sections, m.renderPeers(bodyW))
+		sections = append(sections, m.renderPeers(innerW))
 		sections = append(sections, "")
-		sections = append(sections, m.renderLog(bodyW))
+		sections = append(sections, m.renderLogSized(innerW, logH))
 	}
 
 	sections = append(sections, "")
-	sections = append(sections, m.renderFiles(bodyW))
+	sections = append(sections, m.renderFiles(innerW))
 	sections = append(sections, "")
-	sections = append(sections, m.renderFooter(bodyW))
+	sections = append(sections, m.renderFooter(innerW))
 
 	body := strings.Join(sections, "\n")
-	framed := styFrame.Width(bodyW).Render(body)
+	framed := styFrame.Width(frameW).Render(body)
 	return lipgloss.NewStyle().Padding(1, 2).Render(framed)
 }
 
@@ -267,20 +293,27 @@ func (m *model) renderPeers(_ int) string {
 	return m.renderSection(label, strings.Join(lines, "\n"))
 }
 
-func (m *model) renderLog(_ int) string {
+// renderLogSized renders the log pane reserving roughly maxRows of body
+// space — entries beyond that scroll. _ is the column hint (unused, but
+// keeps the signature shape consistent).
+func (m *model) renderLogSized(_ , maxRows int) string {
+	if maxRows < 4 {
+		maxRows = 4
+	}
 	label := fmt.Sprintf("log (%d)", len(m.snap.Entries))
 	if len(m.snap.Entries) == 0 {
-		return m.renderSection(label, styFaint.Render("(no messages yet — anything you or your peer's agent posts via the post_to_log tool shows here)"))
+		// Fill empty space with vertical pad so the section reserves its
+		// height rather than collapsing to one line.
+		empty := styFaint.Render("(no messages yet — agent posts via the post_to_log tool show here)")
+		filler := strings.Repeat("\n", maxRows-1)
+		return m.renderSection(label, empty+filler)
 	}
-	// Show the last N entries that fit roughly. Keep at most 12 to avoid a
-	// runaway terminal. Honor logScrl as an offset from newest.
-	const max = 12
 	all := m.snap.Entries
 	end := len(all) - m.logScrl
 	if end < 0 {
 		end = 0
 	}
-	start := end - max
+	start := end - maxRows
 	if start < 0 {
 		start = 0
 	}
@@ -298,6 +331,9 @@ func (m *model) renderLog(_ int) string {
 		}
 		head := styFaint.Render(when) + "  " + whoStyled + styFaint.Render(":")
 		lines = append(lines, head+" "+styText.Render(strings.TrimSpace(e.Content)))
+	}
+	for len(lines) < maxRows {
+		lines = append(lines, "")
 	}
 	if m.logScrl > 0 {
 		lines = append(lines, styFaint.Render(fmt.Sprintf("(scrolled %d back · press G to jump to newest)", m.logScrl)))

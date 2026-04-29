@@ -114,9 +114,11 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 	defer mcpStop()
 
 	sessionRoot := filepath.Dir(sharedDir)
-	if err := writeChildMCPConfig(sessionRoot, mcpURL); err != nil {
+	cleanupMCP, err := registerUserScopeMCP(sessionID, mcpURL)
+	if err != nil {
 		return err
 	}
+	defer cleanupMCP()
 	if err := writeSessionPrompt(sessionRoot, sessionID, name, "host", invite.Code); err != nil {
 		return err
 	}
@@ -183,9 +185,11 @@ func runConnect(ctx context.Context, code, name, agent string, detach bool) erro
 	defer mcpStop()
 
 	sessionRoot := filepath.Dir(sharedDir)
-	if err := writeChildMCPConfig(sessionRoot, mcpURL); err != nil {
+	cleanupMCP, err := registerUserScopeMCP(sessionID, mcpURL)
+	if err != nil {
 		return err
 	}
+	defer cleanupMCP()
 	if err := writeSessionPrompt(sessionRoot, sessionID, name, "joiner", ""); err != nil {
 		return err
 	}
@@ -330,20 +334,34 @@ func startMCPHTTP(ctx context.Context, st *store.Store, peerID string) (url stri
 	return mcpURL, cancel, nil
 }
 
-// writeChildMCPConfig drops a .mcp.json next to the session dir so the
-// agent (when launched with cwd=sessionRoot) auto-discovers our HTTP MCP.
-func writeChildMCPConfig(sessionRoot, mcpURL string) error {
-	cfg := fmt.Sprintf(`{
-  "mcpServers": {
-    "collab-ai": {
-      "type": "http",
-      "url": "%s"
-    }
-  }
-}
-`, mcpURL)
-	path := filepath.Join(sessionRoot, ".mcp.json")
-	return os.WriteFile(path, []byte(cfg), 0o600)
+// registerUserScopeMCP registers our HTTP MCP server with Claude Code at
+// user scope (so no per-project approval prompt fires when the agent
+// launches). Returns a cleanup function that removes the registration.
+//
+// Project-scope (.mcp.json) requires a one-time approval per project dir
+// — that's good security but bad UX when collab spins up a fresh session
+// dir on every run. User-scope servers live in ~/.claude.json and are
+// always trusted. We use a per-session name so multiple concurrent
+// sessions don't stomp on each other.
+func registerUserScopeMCP(sessionID, mcpURL string) (cleanup func(), err error) {
+	if _, lookErr := exec.LookPath("claude"); lookErr != nil {
+		return func() {}, fmt.Errorf("claude binary not on PATH; install Claude Code first (https://claude.com/claude-code)")
+	}
+	name := "collab-" + sessionID
+	add := exec.Command("claude", "mcp", "add",
+		"--scope", "user",
+		"--transport", "http",
+		name, mcpURL,
+	)
+	add.Stdout = os.Stderr
+	add.Stderr = os.Stderr
+	if err := add.Run(); err != nil {
+		return func() {}, fmt.Errorf("claude mcp add: %w", err)
+	}
+	return func() {
+		rm := exec.Command("claude", "mcp", "remove", "--scope", "user", name)
+		_ = rm.Run() // best-effort
+	}, nil
 }
 
 // writeSessionPrompt drops a CLAUDE.md into the session dir so the launched
