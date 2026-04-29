@@ -7,44 +7,40 @@ import "github.com/charmbracelet/lipgloss"
 
 // Palette — single source of truth for every color in the TUI.
 var (
-	colAccent     = lipgloss.Color("215") // 256-color sodium amber, matches the web landing
+	colAccent     = lipgloss.Color("215") // 256-color sodium amber
 	colText       = lipgloss.Color("230") // paper cream
 	colTextDim    = lipgloss.Color("245")
 	colTextFaint  = lipgloss.Color("240")
-	colBorder     = lipgloss.Color("236")
 	colSelfMarker = lipgloss.Color("41") // a quiet green for "you"
 )
 
 var (
-	styBold  = lipgloss.NewStyle().Bold(true).Foreground(colText)
-	styDim   = lipgloss.NewStyle().Foreground(colTextDim)
-	styFaint = lipgloss.NewStyle().Foreground(colTextFaint)
+	styBold   = lipgloss.NewStyle().Bold(true).Foreground(colText)
+	styText   = lipgloss.NewStyle().Foreground(colText)
+	styDim    = lipgloss.NewStyle().Foreground(colTextDim)
+	styFaint  = lipgloss.NewStyle().Foreground(colTextFaint)
+	styAccent = lipgloss.NewStyle().Foreground(colAccent)
+	styAccB   = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
 
-	styAccent     = lipgloss.NewStyle().Foreground(colAccent)
-	styAccentBold = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
-
-	styCard = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colBorder).
-			Padding(0, 1)
-
-	styCardTitle = lipgloss.NewStyle().
-			Foreground(colTextDim).
-			Padding(0, 1).
-			MarginRight(1)
-
-	styBanner = lipgloss.NewStyle().
+	// Section label, e.g. "INVITE", "PEERS". Small caps style via uppercase.
+	stySectionLabel = lipgloss.NewStyle().
 			Foreground(colAccent).
 			Bold(true)
 
-	styKeyHint = lipgloss.NewStyle().
-			Foreground(colAccent).
-			Bold(true)
-	styKeyDesc = lipgloss.NewStyle().
-			Foreground(colTextDim)
+	// Accent marker drawn before each section label (▎ = vertical bar).
+	styMarker = lipgloss.NewStyle().Foreground(colAccent)
+
+	styKeyHint = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
+	styKeyDesc = lipgloss.NewStyle().Foreground(colTextDim)
 
 	styPeerSelf  = lipgloss.NewStyle().Foreground(colSelfMarker)
 	styPeerOther = lipgloss.NewStyle().Foreground(colAccent)
 
-	styStatusOK = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
+	styStatusOK = lipgloss.NewStyle().Foreground(colAccent).Italic(true)
+
+	// Outer frame around the whole TUI.
+	styFrame = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colTextFaint).
+			Padding(1, 2)
 )

@@ -12,18 +12,18 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Snapshot is the read-only view the TUI needs each tick. The collab-ai CLI
-// supplies a closure that builds one from live state (store + transport's
-// peer table). Keeping the dep one-way means the TUI doesn't import store
-// or transport.
+// Snapshot is the read-only view the TUI needs each tick. The collab CLI
+// supplies a closure that builds one from live state. The TUI never imports
+// store / transport — just this struct.
 type Snapshot struct {
 	SessionID string
 	Role      string // "host" | "joiner"
 	MyName    string
 	Invite    string // empty for joiner
-	Peers     []Peer
-	LogCount  int
-	FileCount int
+
+	Peers   []Peer
+	Entries []LogEntry
+	Files   []File
 }
 
 type Peer struct {
@@ -33,22 +33,31 @@ type Peer struct {
 	JoinedAt time.Time
 }
 
+// LogEntry is one line in the shared conversation log.
+type LogEntry struct {
+	Timestamp time.Time
+	PeerID    string
+	PeerName  string // resolved from peer table; empty if unknown
+	Role      string // "user" | "assistant"
+	Content   string
+}
+
+// File is one row in the shared-files pane.
+type File struct {
+	Path     string
+	Size     int64
+	ModTime  time.Time
+	PeerID   string
+	PeerName string
+}
+
 // Config wires the model to live state and to the action that launches the
 // AI agent.
 type Config struct {
-	// SnapshotFn returns the latest snapshot. Called every tick.
-	SnapshotFn func() Snapshot
-
-	// AgentLauncher returns a configured exec.Cmd for the AI agent. The TUI
-	// suspends, runs it in the foreground, then resumes.
+	SnapshotFn    func() Snapshot
 	AgentLauncher func() *exec.Cmd
-
-	// AgentName is what we call the agent in keybind labels ("launch claude").
-	AgentName string
-
-	// OnQuit, if set, runs when the user quits the TUI. Used to cancel the
-	// session context.
-	OnQuit func()
+	AgentName     string
+	OnQuit        func()
 }
 
 // Run starts the TUI and blocks until the user quits.
@@ -72,6 +81,7 @@ type model struct {
 	height  int
 	status  string
 	statTTL time.Time
+	logScrl int // 0 = pinned to newest; > 0 = scrolled up by N entries
 }
 
 func newModel(cfg Config) *model {
@@ -94,9 +104,7 @@ func clearStatusAfter(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg { return clearStatusMsg{} })
 }
 
-func (m *model) Init() tea.Cmd {
-	return tick()
-}
+func (m *model) Init() tea.Cmd { return tick() }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -141,6 +149,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, clearStatusAfter(2 * time.Second)
 			}
 
+		case "j", "down":
+			if m.logScrl > 0 {
+				m.logScrl--
+			}
+			return m, nil
+		case "k", "up":
+			m.logScrl++
+			return m, nil
+		case "G":
+			m.logScrl = 0
+			return m, nil
+
 		case "a":
 			if m.cfg.AgentLauncher == nil {
 				return m, nil
@@ -160,96 +180,154 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ───────── view ─────────
 
+const (
+	minBodyWidth = 60
+	twoColCutoff = 100 // wider than this and we go side-by-side for peers + log
+)
+
 func (m *model) View() string {
 	if m.width == 0 {
-		return "" // first frame before SizeMsg
+		return ""
+	}
+	bodyW := max(min(m.width-4, 120), minBodyWidth)
+
+	var sections []string
+
+	sections = append(sections, m.renderHeader(bodyW))
+	sections = append(sections, "")
+	sections = append(sections, m.renderInvite(bodyW))
+
+	if bodyW >= twoColCutoff {
+		left := m.renderPeers(bodyW/2 - 1)
+		right := m.renderLog(bodyW - bodyW/2 - 1)
+		sections = append(sections, "")
+		sections = append(sections, lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right))
+	} else {
+		sections = append(sections, "")
+		sections = append(sections, m.renderPeers(bodyW))
+		sections = append(sections, "")
+		sections = append(sections, m.renderLog(bodyW))
 	}
 
-	header := m.renderHeader()
-	identity := m.renderIdentity()
-	invite := m.renderInvite()
-	peers := m.renderPeers()
-	stats := m.renderStats()
-	footer := m.renderFooter()
+	sections = append(sections, "")
+	sections = append(sections, m.renderFiles(bodyW))
+	sections = append(sections, "")
+	sections = append(sections, m.renderFooter(bodyW))
 
-	body := lipgloss.JoinVertical(lipgloss.Left,
-		header,
-		"",
-		identity,
-		"",
-		invite,
-		"",
-		peers,
-		"",
-		stats,
-		"",
-		footer,
-	)
-
-	// Center horizontally with comfortable max width.
-	maxW := min(m.width-4, 96)
-	wrapped := lipgloss.NewStyle().Width(maxW).Render(body)
-	return lipgloss.NewStyle().Padding(1, 2).Render(wrapped)
+	body := strings.Join(sections, "\n")
+	framed := styFrame.Width(bodyW).Render(body)
+	return lipgloss.NewStyle().Padding(1, 2).Render(framed)
 }
 
-func (m *model) renderHeader() string {
-	left := styBanner.Render("collab-ai")
-	mid := styDim.Render(" — session ")
-	name := styAccentBold.Render(m.snap.SessionID)
-	role := styFaint.Render("  · " + m.snap.Role)
-	return left + mid + name + role
+// header — top bar with brand, session name, role, identity (right-aligned).
+func (m *model) renderHeader(w int) string {
+	left := styBold.Render("collab") +
+		styFaint.Render("  ·  ") +
+		styAccB.Render(m.snap.SessionID) +
+		styFaint.Render("  ·  ") +
+		styDim.Render(m.snap.Role)
+	right := styDim.Render("you are ") + styAccent.Render(m.snap.MyName)
+	return spaceBetween(left, right, w)
 }
 
-func (m *model) renderIdentity() string {
-	return styDim.Render("  You are: ") + styAccent.Render(m.snap.MyName)
+// renderSection joins a section header (▎ LABEL) with its body content.
+func (m *model) renderSection(label, body string) string {
+	header := styMarker.Render("▎ ") + stySectionLabel.Render(strings.ToUpper(label))
+	return header + "\n" + indent(body, 2)
 }
 
-func (m *model) renderInvite() string {
+func (m *model) renderInvite(_ int) string {
 	if m.snap.Invite == "" {
-		return styCard.Width(80).Render(styDim.Render("joined session — no invite to share"))
+		return m.renderSection("session", styFaint.Render("(joined — no invite to share)"))
 	}
-	title := styCardTitle.Render("invite")
-	body := styAccent.Render(m.snap.Invite)
-	hint := styFaint.Render(" press [c] to copy")
-	content := body + "\n" + hint
-	card := styCard.Render(content)
-	return overlayTitle(card, title)
+	hint := styFaint.Render("  press ") + styKeyHint.Render("[c]") + styFaint.Render(" to copy")
+	body := styAccent.Render(m.snap.Invite) + hint
+	return m.renderSection("invite", body)
 }
 
-func (m *model) renderPeers() string {
-	title := styCardTitle.Render(fmt.Sprintf("peers (%d)", len(m.snap.Peers)))
+func (m *model) renderPeers(_ int) string {
+	label := fmt.Sprintf("peers (%d)", len(m.snap.Peers))
 	if len(m.snap.Peers) == 0 {
-		return overlayTitle(styCard.Width(60).Render(styFaint.Render("(none yet)")), title)
+		return m.renderSection(label, styFaint.Render("(none yet — share the invite to add a peer)"))
 	}
-	rows := make([]string, 0, len(m.snap.Peers))
+	var lines []string
 	for _, p := range sortedPeers(m.snap.Peers) {
-		marker := styPeerOther.Render("●")
-		label := styAccent.Render(displayName(p))
+		dot := styPeerOther.Render("●")
+		name := styAccent.Render(displayName(p))
 		note := ""
 		if p.Self {
-			marker = styPeerSelf.Render("●")
-			label = styPeerSelf.Render(displayName(p))
-			note = styFaint.Render("  (you)")
+			dot = styPeerSelf.Render("●")
+			name = styPeerSelf.Render(displayName(p))
+			note = styFaint.Render("  · you")
 		} else {
-			note = styFaint.Render("  joined " + relTime(p.JoinedAt))
+			note = styFaint.Render("  · joined " + relTime(p.JoinedAt))
 		}
-		rows = append(rows, marker+" "+label+note)
+		lines = append(lines, dot+"  "+name+note)
 	}
-	return overlayTitle(styCard.Render(strings.Join(rows, "\n")), title)
+	return m.renderSection(label, strings.Join(lines, "\n"))
 }
 
-func (m *model) renderStats() string {
-	parts := []string{
-		styDim.Render("log entries: ") + styBold.Render(fmt.Sprintf("%d", m.snap.LogCount)),
-		styDim.Render("files: ") + styBold.Render(fmt.Sprintf("%d", m.snap.FileCount)),
+func (m *model) renderLog(_ int) string {
+	label := fmt.Sprintf("log (%d)", len(m.snap.Entries))
+	if len(m.snap.Entries) == 0 {
+		return m.renderSection(label, styFaint.Render("(no messages yet — anything you or your peer's agent posts via the post_to_log tool shows here)"))
 	}
-	if m.status != "" {
-		parts = append(parts, styStatusOK.Render(m.status))
+	// Show the last N entries that fit roughly. Keep at most 12 to avoid a
+	// runaway terminal. Honor logScrl as an offset from newest.
+	const max = 12
+	all := m.snap.Entries
+	end := len(all) - m.logScrl
+	if end < 0 {
+		end = 0
 	}
-	return "  " + strings.Join(parts, styFaint.Render("   ·   "))
+	start := end - max
+	if start < 0 {
+		start = 0
+	}
+	view := all[start:end]
+	var lines []string
+	for _, e := range view {
+		when := e.Timestamp.Local().Format("15:04")
+		who := e.PeerName
+		if who == "" {
+			who = shortPeerID(e.PeerID)
+		}
+		whoStyled := styAccent.Render(who)
+		if isYou(e, m.snap) {
+			whoStyled = styPeerSelf.Render("you")
+		}
+		head := styFaint.Render(when) + "  " + whoStyled + styFaint.Render(":")
+		lines = append(lines, head+" "+styText.Render(strings.TrimSpace(e.Content)))
+	}
+	if m.logScrl > 0 {
+		lines = append(lines, styFaint.Render(fmt.Sprintf("(scrolled %d back · press G to jump to newest)", m.logScrl)))
+	}
+	return m.renderSection(label, strings.Join(lines, "\n"))
 }
 
-func (m *model) renderFooter() string {
+func (m *model) renderFiles(_ int) string {
+	label := fmt.Sprintf("shared files (%d)", len(m.snap.Files))
+	if len(m.snap.Files) == 0 {
+		return m.renderSection(label, styFaint.Render("(empty — files in ./shared/ propagate to every peer)"))
+	}
+	var lines []string
+	files := append([]File(nil), m.snap.Files...)
+	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	for _, f := range files {
+		who := f.PeerName
+		if who == "" {
+			who = shortPeerID(f.PeerID)
+		}
+		ago := relTime(f.ModTime)
+		row := styText.Render(f.Path) +
+			styFaint.Render("  · "+humanSize(f.Size)+
+				"  · from "+who+" "+ago)
+		lines = append(lines, row)
+	}
+	return m.renderSection(label, strings.Join(lines, "\n"))
+}
+
+func (m *model) renderFooter(w int) string {
 	agent := m.cfg.AgentName
 	if agent == "" {
 		agent = "agent"
@@ -260,26 +338,34 @@ func (m *model) renderFooter() string {
 	if m.snap.Invite != "" {
 		keys = append(keys, styKeyHint.Render("[c]")+" "+styKeyDesc.Render("copy invite"))
 	}
+	if len(m.snap.Entries) > 0 {
+		keys = append(keys, styKeyHint.Render("[j/k]")+" "+styKeyDesc.Render("scroll log"))
+	}
 	keys = append(keys, styKeyHint.Render("[q]")+" "+styKeyDesc.Render("quit"))
-	return "  " + strings.Join(keys, styFaint.Render("   "))
+
+	left := strings.Join(keys, styFaint.Render("    "))
+	right := ""
+	if m.status != "" {
+		right = styStatusOK.Render(m.status)
+	}
+	return spaceBetween(left, right, w)
 }
 
-// overlayTitle puts a small label on the top border of a card. Lipgloss
-// doesn't have native title support, so we render the card and splice the
-// title into the top border line.
-func overlayTitle(card, title string) string {
-	lines := strings.Split(card, "\n")
-	if len(lines) == 0 {
-		return card
+// ───────── helpers ─────────
+
+func spaceBetween(left, right string, w int) string {
+	lw := lipgloss.Width(left)
+	rw := lipgloss.Width(right)
+	gap := max(w-lw-rw, 1)
+	return left + strings.Repeat(" ", gap) + right
+}
+
+func indent(s string, n int) string {
+	pad := strings.Repeat(" ", n)
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = pad + lines[i]
 	}
-	top := lines[0]
-	plain := lipgloss.Width(title)
-	// Replace a slice of the top border, preserving leading corner char.
-	if lipgloss.Width(top) < plain+4 {
-		return card
-	}
-	first := []rune(top)[0]
-	lines[0] = string(first) + " " + title + top[lipgloss.Width(string(first))+lipgloss.Width(" "+title):]
 	return strings.Join(lines, "\n")
 }
 
@@ -298,10 +384,14 @@ func displayName(p Peer) string {
 	if p.Name != "" {
 		return p.Name
 	}
-	if len(p.ID) > 16 {
-		return p.ID[:12] + "…" + p.ID[len(p.ID)-4:]
+	return shortPeerID(p.ID)
+}
+
+func shortPeerID(id string) string {
+	if len(id) <= 16 {
+		return id
 	}
-	return p.ID
+	return id[:8] + "…" + id[len(id)-4:]
 }
 
 func relTime(t time.Time) string {
@@ -318,8 +408,27 @@ func relTime(t time.Time) string {
 	return fmt.Sprintf("%dh ago", int(d.Hours()))
 }
 
-// copyToClipboard tries the platform's clipboard tool. macOS = pbcopy,
-// Linux = xclip / wl-copy. Best-effort; returns nil on success.
+func humanSize(n int64) string {
+	switch {
+	case n < 1024:
+		return fmt.Sprintf("%dB", n)
+	case n < 1024*1024:
+		return fmt.Sprintf("%.1fKB", float64(n)/1024)
+	default:
+		return fmt.Sprintf("%.1fMB", float64(n)/(1024*1024))
+	}
+}
+
+func isYou(e LogEntry, s Snapshot) bool {
+	for _, p := range s.Peers {
+		if p.Self && p.ID == e.PeerID {
+			return true
+		}
+	}
+	return false
+}
+
+// copyToClipboard tries pbcopy / wl-copy / xclip / xsel — first one found wins.
 func copyToClipboard(s string) error {
 	for _, candidate := range [][]string{
 		{"pbcopy"},

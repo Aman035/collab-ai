@@ -261,12 +261,38 @@ func sessionToTUI(sess *session) tui.Snapshot {
 	peers = append(peers, tui.Peer{
 		Name: sess.myName, ID: sess.peerID, Self: true, JoinedAt: sess.startedAt,
 	})
+	nameByID := map[string]string{sess.peerID: sess.myName}
 	for id, p := range sess.peers {
 		peers = append(peers, tui.Peer{
 			Name: p.Name, ID: id, JoinedAt: p.JoinedAt,
 		})
+		nameByID[id] = p.Name
 	}
 	sess.mu.Unlock()
+
+	rawEntries := sess.store.EntriesSince(time.Time{})
+	entries := make([]tui.LogEntry, 0, len(rawEntries))
+	for _, e := range rawEntries {
+		entries = append(entries, tui.LogEntry{
+			Timestamp: e.Timestamp,
+			PeerID:    e.PeerID,
+			PeerName:  nameByID[e.PeerID],
+			Role:      e.Role,
+			Content:   e.Content,
+		})
+	}
+
+	rawFiles := sess.store.ListFiles("")
+	files := make([]tui.File, 0, len(rawFiles))
+	for _, f := range rawFiles {
+		files = append(files, tui.File{
+			Path:     f.Path,
+			Size:     f.Size,
+			ModTime:  f.ModTime,
+			PeerID:   f.PeerID,
+			PeerName: nameByID[f.PeerID],
+		})
+	}
 
 	return tui.Snapshot{
 		SessionID: sess.id,
@@ -274,8 +300,8 @@ func sessionToTUI(sess *session) tui.Snapshot {
 		MyName:    sess.myName,
 		Invite:    sess.inviteCode,
 		Peers:     peers,
-		LogCount:  len(sess.store.EntriesSince(time.Time{})),
-		FileCount: len(sess.store.ListFiles("")),
+		Entries:   entries,
+		Files:     files,
 	}
 }
 
