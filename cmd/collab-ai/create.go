@@ -92,6 +92,12 @@ func runCreate(ctx context.Context, name, agent string) error {
 	if err := writeChildMCPConfig(sessionRoot, mcpURL); err != nil {
 		return err
 	}
+	if err := writeSessionPrompt(sessionRoot, sessionID, name, "host", invite.Code); err != nil {
+		return err
+	}
+	if err := persistInvite(sessionRoot, invite.Code); err != nil {
+		return err
+	}
 
 	printCreateBanner(invite, sessionID, name, sharedDir, mcpURL)
 
@@ -150,6 +156,9 @@ func runConnect(ctx context.Context, code, name, agent string) error {
 
 	sessionRoot := filepath.Dir(sharedDir)
 	if err := writeChildMCPConfig(sessionRoot, mcpURL); err != nil {
+		return err
+	}
+	if err := writeSessionPrompt(sessionRoot, sessionID, name, "joiner", ""); err != nil {
 		return err
 	}
 
@@ -217,6 +226,68 @@ func writeChildMCPConfig(sessionRoot, mcpURL string) error {
 `, mcpURL)
 	path := filepath.Join(sessionRoot, ".mcp.json")
 	return os.WriteFile(path, []byte(cfg), 0o600)
+}
+
+// writeSessionPrompt drops a CLAUDE.md into the session dir so the launched
+// agent reads it as project context at session start. Tells the agent it's
+// in a pairing session, what tools are available, and when to use them — so
+// the user doesn't have to nudge "use the post_to_log tool" by hand.
+func writeSessionPrompt(sessionRoot, sessionID, myHandle, role, inviteCode string) error {
+	const promptTmpl = `# collab-ai pairing session
+
+You are the AI agent for **%[1]s** in a live pairing session
+(` + "`%[2]s`" + `, role: ` + "`%[3]s`" + `) with another developer who's
+using their own AI agent through collab-ai.
+
+The ` + "`collab-ai`" + ` MCP server is connected — three tools are available
+and you should use them **proactively** without being asked:
+
+## Tools and when to reach for them
+
+- **` + "`get_shared_log`" + `** — call at the start of any new task to catch
+  up on prior context, and again when the user references something that
+  may have come from the other side. Returns all entries chronologically.
+- **` + "`post_to_log`" + `** — share findings, decisions, plans, or insights
+  with the partner's agent. Treat it like a group chat: post when something
+  changes shared understanding. Skip filler.
+- **` + "`list_shared_files`" + `** — list files in ` + "`./shared/`" + `, the
+  workspace that auto-syncs between peers. Files outside ` + "`./shared/`" + `
+  are local-only.
+
+## Conventions
+
+- Files you create in ` + "`./shared/`" + ` propagate to every peer within a
+  few seconds. Anything elsewhere stays on this machine.
+- Run ` + "`get_shared_log`" + ` first thing — it's how you join an
+  in-progress conversation rather than starting cold.
+- Use role=` + "`assistant`" + ` when sharing your own reasoning, role=` + "`user`" + `
+  when echoing what the human typed verbatim.
+
+## Right now
+
+- Session: ` + "`%[2]s`" + `
+- Your handle: ` + "`%[1]s`" + `
+- Your role: ` + "`%[3]s`" + `
+- Shared directory: ` + "`./shared/`" + `
+%[4]s`
+
+	var inviteSection string
+	if inviteCode != "" {
+		inviteSection = "- Invite code (share to add another peer): `" + inviteCode + "`\n"
+	}
+	body := fmt.Sprintf(promptTmpl, myHandle, sessionID, role, inviteSection)
+	path := filepath.Join(sessionRoot, "CLAUDE.md")
+	return os.WriteFile(path, []byte(body), 0o644)
+}
+
+// persistInvite writes the invite code to <sessionRoot>/INVITE so it's
+// recoverable after Claude Code's TUI clears the screen.
+func persistInvite(sessionRoot, inviteCode string) error {
+	if inviteCode == "" {
+		return nil
+	}
+	path := filepath.Join(sessionRoot, "INVITE")
+	return os.WriteFile(path, []byte(inviteCode+"\n"), 0o600)
 }
 
 // launchAgent execs the user's chosen agent in the session dir so it picks

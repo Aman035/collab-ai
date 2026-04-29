@@ -33,9 +33,15 @@ func New(s *store.Store, peerID string) *Server {
 
 	srv.AddTool(
 		mcp.NewTool("get_shared_log",
-			mcp.WithDescription("Return the full collab-ai conversation log, optionally filtered to entries after a timestamp."),
+			mcp.WithDescription(
+				"Read the shared collab-ai conversation log — the running thread of "+
+					"messages between you and your pair partner's AI agent. Call this "+
+					"at the start of any new task in this session to catch up on prior "+
+					"context, and again whenever the user references something that "+
+					"may have come from the other side. Returns all entries in "+
+					"chronological order with each entry's author handle."),
 			mcp.WithString("since_timestamp",
-				mcp.Description("RFC3339 timestamp; if set, only return entries strictly after this time."),
+				mcp.Description("Optional RFC3339 timestamp. If set, returns only entries strictly after this time — useful when polling for new messages without re-reading old ones."),
 			),
 		),
 		out.handleGetSharedLog,
@@ -43,13 +49,19 @@ func New(s *store.Store, peerID string) *Server {
 
 	srv.AddTool(
 		mcp.NewTool("post_to_log",
-			mcp.WithDescription("Append a new entry to the shared collab-ai conversation log. The entry is broadcast to all peers."),
+			mcp.WithDescription(
+				"Share a message with your pair partner's AI agent through the "+
+					"collab-ai shared log. Call this proactively whenever you've "+
+					"reached a finding, decision, plan, or insight the other side "+
+					"would want to see — they call get_shared_log to read it. "+
+					"Treat the log like a group chat: post when something changes "+
+					"shared understanding. Skip filler and \"thinking out loud\"."),
 			mcp.WithString("role",
-				mcp.Description(`"user" or "assistant".`),
+				mcp.Description(`"assistant" when sharing your own reasoning or output. "user" when echoing the human's words verbatim.`),
 				mcp.Required(),
 			),
 			mcp.WithString("content",
-				mcp.Description("The entry text."),
+				mcp.Description("The message text. Markdown is fine; concise is better than long."),
 				mcp.Required(),
 			),
 		),
@@ -58,9 +70,15 @@ func New(s *store.Store, peerID string) *Server {
 
 	srv.AddTool(
 		mcp.NewTool("list_shared_files",
-			mcp.WithDescription("List metadata for files in the shared directory. Optionally filter by path prefix."),
+			mcp.WithDescription(
+				"List files in the shared workspace (./shared/) — these sync "+
+					"automatically between all peers in this collab-ai session. "+
+					"Call this whenever you need to see what your pair partner has "+
+					"put up for collaboration, or before reading/writing files in "+
+					"the shared dir. Files outside ./shared/ are local-only and "+
+					"are not visible to peers."),
 			mcp.WithString("path",
-				mcp.Description("Optional path prefix (relative to the shared dir)."),
+				mcp.Description("Optional path prefix (relative to ./shared/). If empty, returns every shared file."),
 			),
 		),
 		out.handleListSharedFiles,
