@@ -17,15 +17,6 @@
   <line x1="80" y1="80" x2="1520" y2="80" stroke="#e3e0d8" stroke-width="1"/>
   <line x1="80" y1="820" x2="1520" y2="820" stroke="#e3e0d8" stroke-width="1"/>
 
-  <!-- Top-left meta -->
-  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#807d77" letter-spacing="0.08em">
-    <text x="80" y="120">v0.2</text>
-  </g>
-  <!-- Top-right URL -->
-  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#807d77" letter-spacing="0.04em">
-    <text x="1520" y="120" text-anchor="end">github.com/Aman035/collab-ai</text>
-  </g>
-
   <!-- LOGO MARK + WORDMARK ROW -->
   <g transform="translate(80 320)">
     <!-- Logo mark -->
@@ -78,8 +69,7 @@
   </g>
 
   <!-- BOTTOM LINE -->
-  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" fill="#807d77" letter-spacing="0.04em">
-    <text x="80" y="860">$ curl -sSL collab-ai.dev/install.sh | sh</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" letter-spacing="0.04em">
     <text x="1520" y="860" text-anchor="end" fill="#0d9488">aman035.github.io/collab-ai</text>
   </g>
 </svg>

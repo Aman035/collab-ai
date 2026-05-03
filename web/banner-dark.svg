@@ -15,13 +15,6 @@
   <line x1="80" y1="80" x2="1520" y2="80" stroke="#22252b" stroke-width="1"/>
   <line x1="80" y1="820" x2="1520" y2="820" stroke="#22252b" stroke-width="1"/>
 
-  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#9a978f" letter-spacing="0.08em">
-    <text x="80" y="120">v0.2</text>
-  </g>
-  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#9a978f" letter-spacing="0.04em">
-    <text x="1520" y="120" text-anchor="end">github.com/Aman035/collab-ai</text>
-  </g>
-
   <g transform="translate(80 320)">
     <g fill="none" stroke="#5eead4" stroke-width="6" stroke-linecap="round">
       <circle cx="46" cy="0" r="22" fill="#5eead4"/>
@@ -64,8 +57,7 @@
     <text x="314" y="44" font-size="14" fill="#9a978f">collab</text>
   </g>
 
-  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" fill="#9a978f" letter-spacing="0.04em">
-    <text x="80" y="860">$ curl -sSL collab-ai.dev/install.sh | sh</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" letter-spacing="0.04em">
     <text x="1520" y="860" text-anchor="end" fill="#5eead4">aman035.github.io/collab-ai</text>
   </g>
 </svg>
