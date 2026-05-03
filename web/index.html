@@ -27,7 +27,9 @@
     <div class="container topbar-inner">
       <a href="#" class="brand" aria-label="collab">collab</a>
       <nav class="topnav" aria-label="Primary">
-        <span class="meta">v0.2</span>
+        <a href="#problem">Problem</a>
+        <a href="#solution">Solution</a>
+        <a href="#install">Install</a>
         <a href="https://github.com/Aman035/collab-ai" class="nav-ext">
           GitHub
           <svg viewBox="0 0 12 12" width="9" height="9" aria-hidden="true">
@@ -114,7 +116,95 @@
       </div>
     </section>
 
-    <section class="install">
+
+    <!-- ───────────── PROBLEM ───────────── -->
+    <section class="section section-problem" id="problem">
+      <div class="container">
+        <p class="sec-eyebrow">The problem</p>
+        <h2 class="sec-title">AI coding agents are<br>single-player.</h2>
+        <p class="sec-lede">
+          Real engineering (debugging, code review, mentorship, incident
+          response) is rarely solo work. The current options for two
+          developers who both want to use AI on the same problem all break
+          in some important way.
+        </p>
+
+        <ol class="manifesto">
+          <li>
+            <span class="manifesto-num">i.</span>
+            <div>
+              <h3>Screen-share is passive.</h3>
+              <p>One person drives, the other watches. The observer can't ask their own question without interrupting, and only one agent is doing real work.</p>
+            </div>
+          </li>
+          <li>
+            <span class="manifesto-num">ii.</span>
+            <div>
+              <h3>Shared accounts break the rules.</h3>
+              <p>Splitting a Claude Code seat or sharing API keys violates ToS, mangles billing, and leaks credentials.</p>
+            </div>
+          </li>
+          <li>
+            <span class="manifesto-num">iii.</span>
+            <div>
+              <h3>Async git loses the live reasoning.</h3>
+              <p>By the time the diff lands in a PR, the chain of thought that produced it is already gone.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+
+    <!-- ───────────── SOLUTION + USE CASES ───────────── -->
+    <section class="section section-solution" id="solution">
+      <div class="container">
+        <p class="sec-eyebrow">Solution</p>
+        <h2 class="sec-title">Two channels<br>cross the wire.</h2>
+        <p class="sec-lede">
+          Every developer keeps their own AI agent and their own API key.
+          <code>collab</code> connects the two agents peer-to-peer and
+          syncs exactly two things between them: a shared conversation
+          log and the contents of <code>./shared/</code>. Everything else
+          stays local.
+        </p>
+
+        <figure class="solution-figure">
+          <img class="flow" src="flow.svg" alt="Animated diagram: posts, ask_peer, answers, and files travel between two peers on Axl over a 12-second loop">
+        </figure>
+
+        <p class="sec-eyebrow uses-eyebrow">Use cases</p>
+        <ul class="uses">
+          <li>
+            <h3>Cross-machine pair debugging</h3>
+            <p>Senior + junior hit a prod bug on different laptops. Both join a session; each agent explores a different part of the codebase; findings post to the shared log; the diff lands in <code>./shared/</code>.</p>
+          </li>
+          <li>
+            <h3>Live code review with two agents</h3>
+            <p>Reviewer's agent reads the diff and posts comments via <code>ask_peer</code>. Author's agent reads them, addresses them, replies through <code>respond_to_peer</code>. Files and proposed fixes flow through <code>./shared/</code>.</p>
+          </li>
+          <li>
+            <h3>Async handoff across timezones</h3>
+            <p>Day shift posts context, decisions, and scratch files into the session. Night shift joins, and their agent inherits the full backlog via initial-state replay. Beats a stale PR plus a Slack thread.</p>
+          </li>
+          <li>
+            <h3>Mixed-agent coordination</h3>
+            <p>One developer on Claude Code, one on Codex, one on Cursor. The protocol is agent-agnostic. <code>collab</code> is the wire between any MCP-capable agents.</p>
+          </li>
+          <li>
+            <h3>Incident response</h3>
+            <p>Three on-call engineers, three agents, three hypotheses explored simultaneously. Whichever agent finds the root cause posts to the shared log; everyone's context updates.</p>
+          </li>
+          <li>
+            <h3>Mentorship</h3>
+            <p>Instructor's agent does the real work; student's agent handles basics; the student watches the senior reasoning unfold via <code>get_shared_log</code> rather than over a Zoom screen-share.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+
+    <section class="install" id="install">
       <div class="container install-inner">
 
         <div class="install-row">
