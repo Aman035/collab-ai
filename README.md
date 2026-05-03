@@ -93,16 +93,6 @@ environment, your agent's tool-call results.
 
 ## Architecture
 
-The two-peer view is the simplest mental model: two `collab` binaries
-talking over Axl, each one an MCP bridge to its local agent.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="web/architecture-dark.svg">
-    <img src="web/architecture.svg" alt="Two peers connected over Axl P2P, each running an AI agent that talks MCP to its local collab binary" width="900">
-  </picture>
-</p>
-
 Inside one peer, the work is split across five small Go packages. Each
 layer talks to the layer immediately below it through a Go interface, so
 the transport (and the agent it bridges to) is swappable.
