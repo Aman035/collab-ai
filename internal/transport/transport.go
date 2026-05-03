@@ -12,12 +12,15 @@ import (
 	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
-// Invite is a host's invite for joiners. The Code is human-readable; PeerID
-// and Token are extracted from it on Join.
+// Invite is a host's invite for joiners. The Code is human-readable; PeerID,
+// Token, and Addr are extracted from it on Join. Addr is the host's
+// reachable Axl TLS endpoint (e.g. tls://server1.example.com:9001) — the
+// joiner's daemon configures itself to peer with that endpoint.
 type Invite struct {
 	Code   string
 	PeerID string
 	Token  string
+	Addr   string
 }
 
 // PeerInfo is what we know about a connected peer.

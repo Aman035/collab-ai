@@ -21,7 +21,7 @@ import (
 )
 
 func createCmd() *cobra.Command {
-	var nameFlag, agent string
+	var nameFlag, agent, listenAddr, publicAddr string
 	var detach bool
 	cmd := &cobra.Command{
 		Use:   "create [your-name]",
@@ -30,17 +30,22 @@ func createCmd() *cobra.Command {
 			"MCP server, writes a child .mcp.json next to the session dir, and\n" +
 			"opens a TUI from which you can launch your AI agent.\n\n" +
 			"Your handle: positional arg, then --name flag, then $COLLAB_NAME,\n" +
-			"then a friendly auto-generated default.",
+			"then a friendly auto-generated default.\n\n" +
+			"For a multi-machine demo, set --public-addr to the host's reachable\n" +
+			"endpoint (e.g. tls://server1.example.com:9001). Joiners read it from\n" +
+			"the invite. Single-machine demos work with no flags.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signalContext()
 			defer cancel()
 			name := firstNonEmpty(positional(args, 0), nameFlag, os.Getenv("COLLAB_NAME"))
-			return runCreate(ctx, name, agent, detach)
+			return runCreate(ctx, name, agent, listenAddr, publicAddr, detach)
 		},
 	}
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Your handle (overrides positional arg)")
 	cmd.Flags().StringVar(&agent, "agent", "claude", "AI agent to launch (currently only \"claude\")")
+	cmd.Flags().StringVar(&listenAddr, "listen", "", "Axl daemon's TLS bind address (default tls://0.0.0.0:9001)")
+	cmd.Flags().StringVar(&publicAddr, "public-addr", "", "Reachable TLS endpoint to embed in the invite for joiners (default = listen)")
 	cmd.Flags().BoolVar(&detach, "detach", false, "Skip the TUI and launch the agent immediately")
 	return cmd
 }
@@ -82,7 +87,7 @@ func positional(args []string, i int) string {
 	return ""
 }
 
-func runCreate(ctx context.Context, name, agent string, detach bool) error {
+func runCreate(ctx context.Context, name, agent, listenAddr, publicAddr string, detach bool) error {
 	sessionID, sharedDir, err := allocateSessionDir()
 	if err != nil {
 		return err
@@ -91,6 +96,7 @@ func runCreate(ctx context.Context, name, agent string, detach bool) error {
 
 	ax := transport.NewAxlTransport()
 	ax.SetIdentity(name, sessionID)
+	ax.SetNetwork(listenAddr, publicAddr)
 	fmt.Fprintln(os.Stderr, "→ bringing up Axl daemon...")
 	invite, err := ax.Host(ctx)
 	if err != nil {

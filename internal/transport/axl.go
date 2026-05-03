@@ -14,10 +14,10 @@ import (
 	"github.com/Aman035/collab-ai/pkg/protocol"
 )
 
-// hostListenAddr is the TLS endpoint the host advertises for direct peering.
-// M1 demo runs on a single machine; M2/M3 will swap this for invite-embedded
-// addresses or public bootstrap peers.
-const hostListenAddr = "tls://127.0.0.1:9001"
+// defaultListenAddr is the host's Axl TLS bind address when --listen is
+// not set. 0.0.0.0 lets joiners on other machines connect; pin to
+// 127.0.0.1 if you only want loopback peering.
+const defaultListenAddr = "tls://0.0.0.0:9001"
 
 // recvPollInterval is the sleep between empty /recv polls.
 const recvPollInterval = 200 * time.Millisecond
@@ -28,9 +28,11 @@ type AxlTransport struct {
 	daemon *daemon
 	http   *http.Client
 
-	role      string // "host" | "joiner"
-	myName    string // our friendly handle, included in hello/hello_ack
-	sessionID string // host-assigned identifier for this session
+	role       string // "host" | "joiner"
+	myName     string // our friendly handle, included in hello/hello_ack
+	sessionID  string // host-assigned identifier for this session
+	listenAddr string // host: TLS bind address (defaultListenAddr if unset)
+	publicAddr string // host: TLS endpoint embedded in invite (defaults to listenAddr)
 
 	mu       sync.Mutex
 	peers    map[string]PeerInfo
@@ -63,10 +65,29 @@ func (a *AxlTransport) SetIdentity(name, sessionID string) {
 	a.sessionID = sessionID
 }
 
-// Host starts an Axl daemon listening on hostListenAddr and mints an invite.
+// SetNetwork configures host-only network endpoints before Host():
+//
+//   - listenAddr is what the local Axl daemon binds to
+//     (e.g. "tls://0.0.0.0:9001"). Empty = defaultListenAddr.
+//   - publicAddr is what gets embedded in the invite for joiners to dial
+//     (e.g. "tls://server1.example.com:9001"). Empty = use listenAddr.
+//     For a single-machine demo, both can be left empty.
+func (a *AxlTransport) SetNetwork(listenAddr, publicAddr string) {
+	a.listenAddr = listenAddr
+	a.publicAddr = publicAddr
+}
+
+// Host starts an Axl daemon listening on the configured listen address
+// (SetNetwork; defaults to defaultListenAddr) and mints an invite. The
+// invite embeds the publicAddr so joiners on other machines know what
+// endpoint to dial.
 func (a *AxlTransport) Host(ctx context.Context) (Invite, error) {
+	listen := a.listenAddr
+	if listen == "" {
+		listen = defaultListenAddr
+	}
 	d, err := startDaemon(ctx, daemonOpts{
-		Listen: []string{hostListenAddr},
+		Listen: []string{listen},
 		Peers:  nil,
 	})
 	if err != nil {
@@ -75,7 +96,11 @@ func (a *AxlTransport) Host(ctx context.Context) (Invite, error) {
 	a.daemon = d
 	a.role = "host"
 
-	inv, err := NewInvite(d.peerID)
+	publicAddr := a.publicAddr
+	if publicAddr == "" {
+		publicAddr = listen
+	}
+	inv, err := NewInvite(d.peerID, publicAddr)
 	if err != nil {
 		_ = d.stop()
 		return Invite{}, err
@@ -97,9 +122,13 @@ func (a *AxlTransport) Host(ctx context.Context) (Invite, error) {
 // budget. A failed handshake surfaces as a missing PeerJoined event
 // rather than an error from this call.
 func (a *AxlTransport) Join(ctx context.Context, invite Invite) error {
+	peerAddr := invite.Addr
+	if peerAddr == "" {
+		peerAddr = DefaultPeerAddr
+	}
 	d, err := startDaemon(ctx, daemonOpts{
 		Listen: nil,
-		Peers:  []string{hostListenAddr},
+		Peers:  []string{peerAddr},
 	})
 	if err != nil {
 		return err

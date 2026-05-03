@@ -5,9 +5,10 @@ import (
 	"testing"
 )
 
-func TestInviteRoundtrip(t *testing.T) {
-	pid := strings.Repeat("ab", 32) // 64 hex chars
-	inv, err := NewInvite(pid)
+func TestInviteRoundtripWithAddr(t *testing.T) {
+	pid := strings.Repeat("ab", 32)
+	addr := "tls://server1.example.com:9001"
+	inv, err := NewInvite(pid, addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,6 +25,41 @@ func TestInviteRoundtrip(t *testing.T) {
 	if got.Token != inv.Token {
 		t.Fatalf("token: got %q want %q", got.Token, inv.Token)
 	}
+	if got.Addr != addr {
+		t.Fatalf("addr: got %q want %q", got.Addr, addr)
+	}
+}
+
+func TestInviteEmptyAddrDefaultsToLoopback(t *testing.T) {
+	pid := strings.Repeat("cd", 32)
+	inv, err := NewInvite(pid, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ParseInvite(inv.Code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Addr != DefaultPeerAddr {
+		t.Fatalf("default addr: got %q want %q", got.Addr, DefaultPeerAddr)
+	}
+}
+
+func TestInviteOldFormatStillParses(t *testing.T) {
+	// Two-section invite (no addr block) should still parse and default to
+	// loopback so existing single-machine demos keep working.
+	pid := strings.Repeat("ef", 32)
+	old := "COLLAB-" + pid + "-1234567890"
+	got, err := ParseInvite(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PeerID != pid || got.Token != "1234567890" {
+		t.Fatalf("parsed: %+v", got)
+	}
+	if got.Addr != DefaultPeerAddr {
+		t.Fatalf("addr default: got %q", got.Addr)
+	}
 }
 
 func TestInviteRejectsMalformed(t *testing.T) {
@@ -31,8 +67,8 @@ func TestInviteRejectsMalformed(t *testing.T) {
 		"BADPREFIX-aaaaaa-bbbbbb",
 		"COLLAB-tooShort-bbbbbbbbbb",
 		"COLLAB-" + strings.Repeat("a", 64) + "-shortok",
-		"COLLAB-" + strings.Repeat("z", 64) + "-1234567890",      // not hex
-		"COLLAB-" + strings.Repeat("a", 64) + "-zzzzzzzzzz",      // not hex
+		"COLLAB-" + strings.Repeat("z", 64) + "-1234567890",
+		"COLLAB-" + strings.Repeat("a", 64) + "-zzzzzzzzzz",
 	}
 	for _, c := range cases {
 		if _, err := ParseInvite(c); err == nil {
