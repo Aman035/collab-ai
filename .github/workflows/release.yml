@@ -1,0 +1,44 @@
+name: Release
+
+# Pushes a v* tag → builds darwin/linux × amd64/arm64 binaries via
+# goreleaser → uploads them as a draft GitHub Release. Tag with:
+#   git tag v0.2.0 && git push --tags
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.2.0)"
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Sanity build + test
+        run: |
+          go mod download
+          go build ./...
+          go test ./...
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
