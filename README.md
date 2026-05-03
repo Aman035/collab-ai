@@ -16,14 +16,9 @@ agent and their own API key.
 
 ## What it is
 
-```
-┌─ peer A ──────────────┐                      ┌─ peer B ──────────────┐
-│  AI agent             │                      │  AI agent             │
-│       ↕ MCP (HTTP)    │                      │       ↕ MCP (HTTP)    │
-│  collab               │ ◀──── Axl P2P ────▶  │  collab               │
-│  ./shared/  ←─ files  │      log + files     │  ./shared/  ─→ files  │
-└───────────────────────┘                      └───────────────────────┘
-```
+<p align="center">
+  <img src="web/architecture.svg" alt="Two peers, each running an AI agent connected over MCP to a local collab binary, peered to the other via Axl P2P" width="900">
+</p>
 
 Two channels cross the network and nothing else:
 

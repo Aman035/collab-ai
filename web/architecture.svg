@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 380" role="img" aria-labelledby="diagramTitle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <title id="diagramTitle">collab architecture: two peers, MCP locally, Axl P2P between</title>
+
+  <defs>
+    <!-- Bidirectional arrowheads for the central Axl wire -->
+    <marker id="caret-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10" fill="none" stroke="#2547ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="caret-l" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 10 0 L 0 5 L 10 10" fill="none" stroke="#2547ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <!-- Tiny arrow inside each peer for the MCP up/down channel -->
+    <marker id="mini-up" viewBox="0 0 10 10" refX="5" refY="2" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 6 L 5 0 L 10 6" fill="none" stroke="#7a7773" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="mini-down" viewBox="0 0 10 10" refX="5" refY="8" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 4 L 5 10 L 10 4" fill="none" stroke="#7a7773" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <style>
+    .corner    { stroke: #0a0a0a; stroke-width: 1.6; fill: none; stroke-linecap: round; }
+    .peer-tag  { font-size: 11px; fill: #9a9692; letter-spacing: 0.18em; text-transform: uppercase; }
+    .row-label { font-size: 16px; fill: #0a0a0a; }
+    .row-meta  { font-size: 12px; fill: #7a7773; }
+    .divider   { stroke: #e0ddd5; stroke-width: 1; }
+    .mcp-line  { stroke: #7a7773; stroke-width: 1.3; stroke-dasharray: 4 3; }
+    .wire      { stroke: #2547ff; stroke-width: 2.2; stroke-linecap: round; }
+    .wire-tag  { font-size: 14px; fill: #2547ff; font-weight: 500; letter-spacing: 0.04em; }
+    .wire-sub  { font-size: 12px; fill: #7a7773; letter-spacing: 0.06em; }
+  </style>
+
+  <!-- ─────────── LEFT PEER ─────────── -->
+  <g transform="translate(40 40)">
+    <!-- Bracketed corners instead of a full rectangle, signals "schematic" -->
+    <path class="corner" d="M 0 16 L 0 0 L 16 0"/>
+    <path class="corner" d="M 384 0 L 400 0 L 400 16"/>
+    <path class="corner" d="M 400 284 L 400 300 L 384 300"/>
+    <path class="corner" d="M 16 300 L 0 300 L 0 284"/>
+
+    <text class="peer-tag" x="20" y="32">peer A</text>
+
+    <!-- Row 1: AI agent -->
+    <text class="row-label" x="32" y="86">AI agent</text>
+    <text class="row-meta"  x="32" y="106">Claude Code · Codex · Cursor</text>
+
+    <line class="divider" x1="20" y1="128" x2="380" y2="128"/>
+
+    <!-- MCP channel arrow (vertical, dashed, double-headed) -->
+    <line class="mcp-line" x1="200" y1="138" x2="200" y2="168"
+          marker-start="url(#mini-up)" marker-end="url(#mini-down)"/>
+    <text class="row-meta" x="220" y="158">MCP (HTTP)</text>
+
+    <line class="divider" x1="20" y1="180" x2="380" y2="180"/>
+
+    <!-- Row 2: collab binary -->
+    <text class="row-label" x="32" y="218">collab</text>
+    <text class="row-meta"  x="32" y="238">your local Go binary</text>
+
+    <line class="divider" x1="20" y1="258" x2="380" y2="258"/>
+
+    <!-- Row 3: shared dir -->
+    <text class="row-label" x="32" y="286">./shared/</text>
+  </g>
+
+  <!-- ─────────── CENTER WIRE ─────────── -->
+  <g transform="translate(440 0)">
+    <!-- Hero label above the wire -->
+    <text class="wire-tag" x="100" y="170" text-anchor="middle">Axl P2P</text>
+    <!-- The wire itself (the focal point of the whole image) -->
+    <line class="wire" x1="0" y1="190" x2="200" y2="190"
+          marker-start="url(#caret-l)" marker-end="url(#caret-r)"/>
+    <!-- subtitle below -->
+    <text class="wire-sub" x="100" y="212" text-anchor="middle">log + files</text>
+  </g>
+
+  <!-- ─────────── RIGHT PEER (mirror) ─────────── -->
+  <g transform="translate(640 40)">
+    <path class="corner" d="M 0 16 L 0 0 L 16 0"/>
+    <path class="corner" d="M 384 0 L 400 0 L 400 16"/>
+    <path class="corner" d="M 400 284 L 400 300 L 384 300"/>
+    <path class="corner" d="M 16 300 L 0 300 L 0 284"/>
+
+    <text class="peer-tag" x="20" y="32">peer B</text>
+
+    <text class="row-label" x="32" y="86">AI agent</text>
+    <text class="row-meta"  x="32" y="106">Claude Code · Codex · Cursor</text>
+    <line class="divider" x1="20" y1="128" x2="380" y2="128"/>
+
+    <line class="mcp-line" x1="200" y1="138" x2="200" y2="168"
+          marker-start="url(#mini-up)" marker-end="url(#mini-down)"/>
+    <text class="row-meta" x="220" y="158">MCP (HTTP)</text>
+
+    <line class="divider" x1="20" y1="180" x2="380" y2="180"/>
+
+    <text class="row-label" x="32" y="218">collab</text>
+    <text class="row-meta"  x="32" y="238">your local Go binary</text>
+
+    <line class="divider" x1="20" y1="258" x2="380" y2="258"/>
+
+    <text class="row-label" x="32" y="286">./shared/</text>
+  </g>
+</svg>

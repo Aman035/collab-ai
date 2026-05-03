@@ -151,12 +151,7 @@
         </p>
 
         <figure class="diagram-figure">
-          <pre class="diagram"><code>┌─ peer A ──────────────┐                      ┌─ peer B ──────────────┐
-│  AI agent             │                      │  AI agent             │
-│       ↕ MCP (HTTP)    │                      │       ↕ MCP (HTTP)    │
-│  collab               │ <span class="wire">◀──── Axl P2P ────▶</span>  │  collab               │
-│  ./shared/  ←─ files  │      log + files     │  ./shared/  ─→ files  │
-└───────────────────────┘                      └───────────────────────┘</code></pre>
+          <img class="diagram" src="architecture.svg" alt="Two peers, each running an AI agent connected over MCP to a local collab binary, peered to the other via Axl P2P">
           <figcaption>
             MCP server local to each agent. Two channels sync between peers:
             an append-only conversation log and the contents of
