@@ -1,0 +1,67 @@
+# Two-container demo for collab.
+#
+# Each container is one "user on the internet." They sit on a custom
+# bridge network ("internet") with explicit IPs so the audience sees
+# two distinct hosts, and the Gensyn Axl daemon inside each one routes
+# peer-to-peer between them.
+#
+# Per-container volumes for ~/.claude let you log in to two different
+# Claude accounts, one per container, and have those logins persist
+# across `docker compose down/up`.
+#
+# Quickstart (see demo/README.md for the full runbook):
+#   docker compose -f demo/docker-compose.yml up -d --build
+#   docker compose -f demo/docker-compose.yml exec alice bash
+#   docker compose -f demo/docker-compose.yml exec bob   bash
+
+name: collab-demo
+
+services:
+  alice:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile
+    image: collab-demo:latest
+    container_name: alice
+    hostname: alice-laptop
+    networks:
+      internet:
+        ipv4_address: 10.42.0.11
+    volumes:
+      - alice_claude:/root/.claude
+      - alice_collab:/root/.collab
+    stdin_open: true
+    tty: true
+
+  bob:
+    # Reuse the image alice builds. depends_on ensures alice builds first.
+    image: collab-demo:latest
+    container_name: bob
+    hostname: bob-laptop
+    depends_on:
+      - alice
+    networks:
+      internet:
+        ipv4_address: 10.42.0.22
+    volumes:
+      - bob_claude:/root/.claude
+      - bob_collab:/root/.collab
+    stdin_open: true
+    tty: true
+
+volumes:
+  alice_claude:
+  alice_collab:
+  bob_claude:
+  bob_collab:
+
+networks:
+  # Custom bridge with an explicit subnet. Each container gets a stable
+  # IP on this subnet so the demo can show "two hosts at distinct IPs"
+  # rather than docker's default container-name DNS hand-waving.
+  internet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.42.0.0/24
+          gateway: 10.42.0.1

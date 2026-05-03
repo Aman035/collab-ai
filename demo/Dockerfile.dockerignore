@@ -1,0 +1,15 @@
+# Build context is the repo root. Skip everything that does not feed
+# the Go build to keep the image small and the build fast.
+.git
+.github
+.idea
+.vscode
+.DS_Store
+*.md
+docs
+demo
+web
+experiments
+dist
+*.log
+node_modules
