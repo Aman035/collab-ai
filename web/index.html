@@ -3,37 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>collab — multiplayer for AI coding agents</title>
-  <meta name="description" content="A small Go CLI that lets two developers share a Claude Code, Codex, or Cursor session — peer-to-peer. Each developer brings their own agent. No central server, no shared accounts, no platform.">
+  <title>collab: multiplayer for AI coding agents</title>
+  <meta name="description" content="A small Go CLI that lets two developers share a Claude Code, Codex, or Cursor session, peer-to-peer. Each developer brings their own agent.">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f5f4f0">
+  <meta name="theme-color" content="#f7f5f0">
 
-  <meta property="og:title" content="collab — multiplayer for AI coding agents">
+  <meta property="og:title" content="collab: multiplayer for AI coding agents">
   <meta property="og:description" content="Pair on Claude Code, Codex, or Cursor sessions peer-to-peer. Each developer brings their own agent.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://github.com/Aman035/collab-ai">
+  <meta property="og:url" content="https://aman035.github.io/collab-ai/">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=Geist:wght@400;500&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
 
   <link rel="stylesheet" href="styles.css">
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f5f4f0'/%3E%3Ctext x='16' y='22' font-family='serif' font-size='20' text-anchor='middle' fill='%232547ff'%3Ec%3C/text%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d0e12'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='18' text-anchor='middle' fill='%235eead4'%3Ec%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
   <header class="topbar">
     <div class="container topbar-inner">
-      <a href="#top" class="brand">
-        <span class="brand-c">c</span><span class="brand-rest">ollab</span>
-      </a>
+      <a href="#" class="brand" aria-label="collab">collab</a>
       <nav class="topnav" aria-label="Primary">
-        <a href="#how">How it works</a>
-        <a href="#install">Install</a>
-        <a href="https://github.com/Aman035/collab-ai" class="topnav-ext">
+        <span class="meta">v0.2</span>
+        <a href="https://github.com/Aman035/collab-ai" class="nav-ext">
           GitHub
-          <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">
+          <svg viewBox="0 0 12 12" width="9" height="9" aria-hidden="true">
             <path d="M3 9l6-6M5 3h4v4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </a>
@@ -41,277 +38,156 @@
     </div>
   </header>
 
-  <main id="top">
-
-    <!-- ───────────── HERO ───────────── -->
+  <main>
     <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-text">
-          <p class="hero-meta">v0.2  ·  MIT  ·  built on Gensyn Axl</p>
+      <div class="container hero-inner">
 
+        <div class="hero-words">
           <h1 class="hero-title">
-            Multiplayer for<br>
-            AI&nbsp;coding agents<span class="period">.</span>
+            Multiplayer for<br>AI coding agents<span class="period">.</span>
           </h1>
-
           <p class="hero-lede">
-            A small Go CLI that lets two developers share a Claude Code, Codex,
-            or Cursor session — peer-to-peer. Each person brings their own
-            agent. No central server, no shared accounts, no platform.
+            Two developers, two AI agents, one session. Peer-to-peer.
+            No platform.
           </p>
+        </div>
 
-          <div class="hero-ctas">
-            <a class="btn btn-primary" href="https://github.com/Aman035/collab-ai">
-              <span>View on GitHub</span>
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </a>
-            <a class="btn btn-ghost" href="#install">How to install</a>
+        <!-- ANIMATED TUI MOCKUP - the hero -->
+        <div class="tui-frame" role="img" aria-label="An animated preview of a collab session in progress">
+          <div class="tui-bar">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+            <span class="tui-bar-title" id="tui-title">~/  ·  collab create alice</span>
+            <span class="tui-bar-status" id="tui-livedot" title="live"></span>
+          </div>
+          <div class="tui-body" id="tui-body">
+
+            <div class="tui-header">
+              collab <span class="dim">·</span> <span class="accent" id="tui-session">sleek-platypus</span> <span class="dim">·</span> <span class="dim">host</span>
+              <span class="tui-header-right"><span class="dim">you are </span><span class="accent">alice</span></span>
+            </div>
+
+            <div class="tui-block">
+              <div class="tui-label">▎ INVITE</div>
+              <div class="tui-row mono">
+                <span class="accent">COLLAB-eae0761a…6c61-5768dd24ea</span>
+                <span class="dim">  press [c] to copy</span>
+              </div>
+            </div>
+
+            <div class="tui-twocol">
+              <div class="tui-block">
+                <div class="tui-label">▎ PEERS (<span id="peer-count">1</span>)</div>
+                <ul class="tui-peer-list" id="peer-list">
+                  <li class="peer self">
+                    <span class="peer-dot self">●</span>
+                    <span class="peer-name self">alice</span>
+                    <span class="dim">· you</span>
+                    <div class="peer-status" id="status-alice"></div>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="tui-block">
+                <div class="tui-label">▎ LOG (<span id="log-count">0</span>)</div>
+                <ul class="tui-log" id="log-list"></ul>
+              </div>
+            </div>
+
+            <div class="tui-block">
+              <div class="tui-label">▎ SHARED FILES (<span id="file-count">0</span>)</div>
+              <ul class="tui-files" id="file-list">
+                <li class="empty dim">(empty)</li>
+              </ul>
+            </div>
+
+            <div class="tui-footer">
+              <span class="key">[a]</span> <span class="dim">launch claude</span>
+              &nbsp;&nbsp;&nbsp;<span class="key">[c]</span> <span class="dim">copy invite</span>
+              &nbsp;&nbsp;&nbsp;<span class="key">[j/k]</span> <span class="dim">scroll log</span>
+              &nbsp;&nbsp;&nbsp;<span class="key">[q]</span> <span class="dim">quit</span>
+            </div>
           </div>
         </div>
 
-        <aside class="hero-snippet" aria-hidden="true">
-          <div class="snippet-bar">
-            <span class="snippet-dot"></span>
-            <span class="snippet-dot"></span>
-            <span class="snippet-dot"></span>
-            <span class="snippet-title">~/  ·  zsh</span>
+      </div>
+    </section>
+
+    <section class="install">
+      <div class="container install-inner">
+
+        <div class="install-row">
+          <div class="install-text">
+            <p class="install-eyebrow">Install</p>
+            <p class="install-help">One curl. The Axl daemon auto-builds on first session.</p>
           </div>
-          <pre class="snippet-body"><code><span class="prompt">$</span> collab create alice
-<span class="ok">✓</span> session ready  <span class="dim">·  ~/collab/sleek-platypus/</span>
+          <div class="install-cmd">
+            <button class="copy-btn" type="button" data-copy="curl -sSL https://raw.githubusercontent.com/Aman035/collab-ai/main/install.sh | sh" aria-label="Copy install command">
+              <svg viewBox="0 0 14 14" width="11" height="11" aria-hidden="true">
+                <rect x="4" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                <path d="M3 9V2h7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="copy-label">Copy</span>
+            </button>
+            <pre><code><span class="prompt">$</span> curl -sSL https://raw.githubusercontent.com/Aman035/collab-ai/main/install.sh | sh</code></pre>
+          </div>
+        </div>
 
-  invite
-  <span class="hl">COLLAB-eae0761a…6c61-5768dd24ea-dGxz…</span>
+        <div class="install-row alt">
+          <div class="install-text">
+            <p class="install-eyebrow">Or build</p>
+            <p class="install-help">Needs Go 1.22+ and git.</p>
+          </div>
+          <div class="install-cmd">
+            <button class="copy-btn" type="button" data-copy="go install github.com/Aman035/collab-ai/cmd/collab@latest" aria-label="Copy go install command">
+              <svg viewBox="0 0 14 14" width="11" height="11" aria-hidden="true">
+                <rect x="4" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                <path d="M3 9V2h7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="copy-label">Copy</span>
+            </button>
+            <pre><code><span class="prompt">$</span> go install github.com/Aman035/collab-ai/cmd/collab@latest</code></pre>
+          </div>
+        </div>
 
-  peers
-  <span class="ok">●</span> alice  <span class="dim">· you</span></code></pre>
-        </aside>
       </div>
     </section>
 
-    <hr class="rule">
-
-
-    <!-- ───────────── 01 · PROBLEM ───────────── -->
-    <section class="section">
-      <div class="container">
-        <header class="sec-head">
-          <span class="sec-num">01</span>
-          <span class="sec-label">The problem</span>
-        </header>
-        <h2 class="sec-title">AI coding agents are<br>single-player.</h2>
-        <p class="sec-lede">
-          Real engineering — debugging, reviews, mentorship — is rarely solo
-          work. Today's options for pairing on AI sessions all break in some
-          important way.
-        </p>
-
-        <ol class="manifesto">
-          <li>
-            <span class="manifesto-num">i.</span>
-            <div>
-              <h3>Screen-share is passive.</h3>
-              <p>One person drives, the other watches. The observer can't ask their own question without interrupting the driver's flow.</p>
-            </div>
-          </li>
-          <li>
-            <span class="manifesto-num">ii.</span>
-            <div>
-              <h3>Shared accounts break the rules.</h3>
-              <p>Splitting a Claude Code seat or sharing API keys violates ToS, mangles billing, and leaks credentials.</p>
-            </div>
-          </li>
-          <li>
-            <span class="manifesto-num">iii.</span>
-            <div>
-              <h3>Async git loses the live reasoning.</h3>
-              <p>By the time the diff lands, the chain of thought that produced it is already gone.</p>
-            </div>
-          </li>
-        </ol>
-      </div>
-    </section>
-
-    <hr class="rule">
-
-
-    <!-- ───────────── 02 · HOW IT WORKS ───────────── -->
-    <section class="section" id="how">
-      <div class="container">
-        <header class="sec-head">
-          <span class="sec-num">02</span>
-          <span class="sec-label">How it works</span>
-        </header>
-        <h2 class="sec-title">Two binaries.<br>One conversation.</h2>
-        <p class="sec-lede">
-          Each participant runs <code>collab</code> locally. The binary speaks
-          MCP to the agent and connects peer-to-peer to other participants
-          over Gensyn Axl.
-        </p>
-
-        <figure class="diagram-figure">
-          <img class="diagram" src="architecture.svg" alt="Two peers, each running an AI agent connected over MCP to a local collab binary, peered to the other via Axl P2P">
-          <figcaption>
-            MCP server local to each agent. Two channels sync between peers:
-            an append-only conversation log and the contents of
-            <code>./shared/</code>. Nothing else crosses the network.
-          </figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <hr class="rule">
-
-
-    <!-- ───────────── 03 · TOOLS ───────────── -->
-    <section class="section">
-      <div class="container">
-        <header class="sec-head">
-          <span class="sec-num">03</span>
-          <span class="sec-label">What the agent can do</span>
-        </header>
-        <h2 class="sec-title">Five tools, one wire.</h2>
-
-        <ol class="tools">
-          <li>
-            <h3><code>get_shared_log</code></h3>
-            <p>Read every entry from every peer's agent. Late joiners inherit the full backlog automatically — host replays on accept.</p>
-          </li>
-          <li>
-            <h3><code>post_to_log</code></h3>
-            <p>Broadcast a message to every connected agent. The shared chat that turns parallel work into pairing.</p>
-          </li>
-          <li class="tools-feature">
-            <h3><code>ask_peer</code><span class="dim"> · </span><code>respond_to_peer</code></h3>
-            <p><strong>The distinctive bit.</strong> Direct agent-to-agent calls. One Claude can ask another's Claude a question by handle and get a tagged answer back. This is the moment <code>collab</code> stops feeling like a shared scratchpad and starts feeling like remote pair programming.</p>
-          </li>
-          <li>
-            <h3><code>set_status</code></h3>
-            <p>Live presence — what each agent is currently working on appears under their handle in everyone's roster.</p>
-          </li>
-          <li>
-            <h3><code>list_shared_files</code></h3>
-            <p>The contents of <code>./shared/</code>. Drop a file there and it propagates to every peer in seconds.</p>
-          </li>
-        </ol>
-      </div>
-    </section>
-
-    <hr class="rule">
-
-
-    <!-- ───────────── 04 · QUICK START ───────────── -->
-    <section class="section">
-      <div class="container">
-        <header class="sec-head">
-          <span class="sec-num">04</span>
-          <span class="sec-label">Quick start</span>
-        </header>
-        <h2 class="sec-title">Two terminals.<br>One invite.</h2>
-
-        <h3 class="sub-head">Single machine</h3>
-        <div class="code">
-          <button class="copy-btn" type="button" data-copy="collab create alice
-collab join COLLAB-eae0761a…c61 bob" aria-label="Copy commands">
-            <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
-              <rect x="4" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-              <path d="M3 9V2h7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="copy-label">Copy</span>
-          </button>
-<pre><code><span class="dim"># tab A — host</span>
+    <section class="commands">
+      <div class="container commands-inner">
+        <p class="cmd-eyebrow">Then</p>
+        <pre class="cmd-grid"><code><span class="dim"># host a session</span>
 <span class="prompt">$</span> collab create alice
 
-<span class="dim"># tab B — joiner</span>
-<span class="prompt">$</span> collab join <span class="hl">COLLAB-eae0761a…c61</span> bob</code></pre>
-        </div>
+<span class="dim"># join from another machine</span>
+<span class="prompt">$</span> collab join <span class="accent">COLLAB-…</span> bob
 
-        <h3 class="sub-head">Two machines (e.g. SSH)</h3>
-        <div class="code">
-          <button class="copy-btn" type="button" data-copy="collab create alice --public-addr tls://server1.example.com:9001
-collab join COLLAB-... bob" aria-label="Copy commands">
-            <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
-              <rect x="4" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-              <path d="M3 9V2h7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="copy-label">Copy</span>
-          </button>
-<pre><code><span class="dim"># on server1 — host</span>
-<span class="prompt">$</span> collab create alice <span class="flag">--public-addr</span> tls://server1.example.com:9001
-
-<span class="dim"># on server2 — joiner</span>
-<span class="prompt">$</span> collab join <span class="hl">COLLAB-…</span> bob
-<span class="dim"># the joiner's Axl daemon dials server1.example.com:9001 automatically</span></code></pre>
-        </div>
-
-        <p class="quick-postscript">
-          Press <kbd>a</kbd> in the TUI to launch your AI agent. Each peer's
-          agent opens already aware of the session — <code>get_shared_log</code>
-          returns the existing context, <code>list_shared_files</code> reports
-          everything in <code>./shared/</code>.
-        </p>
-      </div>
-    </section>
-
-    <hr class="rule">
-
-
-    <!-- ───────────── 05 · INSTALL ───────────── -->
-    <section class="section" id="install">
-      <div class="container">
-        <header class="sec-head">
-          <span class="sec-num">05</span>
-          <span class="sec-label">Install</span>
-        </header>
-        <h2 class="sec-title">One curl.</h2>
-        <p class="sec-lede">
-          Installs the <code>collab</code> binary on your PATH. The Gensyn Axl
-          daemon auto-builds into <code>~/.collab/bin/axl-node</code> on first
-          session — no second binary to chase.
-        </p>
-
-        <div class="code">
-          <button class="copy-btn" type="button" data-copy="curl -sSL https://raw.githubusercontent.com/Aman035/collab-ai/main/install.sh | sh" aria-label="Copy install command">
-            <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
-              <rect x="4" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-              <path d="M3 9V2h7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="copy-label">Copy</span>
-          </button>
-<pre><code><span class="prompt">$</span> curl -sSL https://raw.githubusercontent.com/Aman035/collab-ai/main/install.sh | sh</code></pre>
-        </div>
-
-        <p class="install-note">Or build from source — needs Go 1.22+:</p>
-        <div class="code">
-          <button class="copy-btn" type="button" data-copy="go install github.com/Aman035/collab-ai/cmd/collab@latest" aria-label="Copy go install command">
-            <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
-              <rect x="4" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-              <path d="M3 9V2h7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="copy-label">Copy</span>
-          </button>
-<pre><code><span class="prompt">$</span> go install github.com/Aman035/collab-ai/cmd/collab@latest</code></pre>
-        </div>
+<span class="dim"># across two servers (port 9001 reachable)</span>
+<span class="prompt">$</span> collab create alice <span class="accent">--public-addr</span> tls://server1.example.com:9001</code></pre>
       </div>
     </section>
 
   </main>
 
-
   <footer class="site-footer">
     <div class="container footer-row">
       <p class="footer-meta">
-        <span class="brand">collab</span><span class="dim"> — v0.2 · early.</span>
-        <a href="https://github.com/Aman035/collab-ai/blob/main/LICENSE">MIT</a>.
-        Built on <a href="https://github.com/gensyn-ai/axl">Gensyn Axl</a>.
+        <span class="brand">collab</span>
+        <span class="dim">·  v0.2  ·  </span>
+        <a href="https://github.com/Aman035/collab-ai/blob/main/LICENSE">MIT</a>
+        <span class="dim">  ·  built on </span>
+        <a href="https://github.com/gensyn-ai/axl">Gensyn Axl</a>
       </p>
-      <p class="footer-link">
-        <a href="https://github.com/Aman035/collab-ai">github.com/Aman035/collab-ai ↗</a>
+      <p class="footer-links">
+        <a href="https://github.com/Aman035/collab-ai">GitHub</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/Aman035/collab-ai/releases">Releases</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/Aman035/collab-ai/blob/main/README.md">Docs</a>
       </p>
     </div>
   </footer>
-
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

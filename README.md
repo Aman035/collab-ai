@@ -168,51 +168,37 @@ When you `collab create`:
 
 ## Architecture
 
-Five layers, agent to network:
+The two-peer view, repeated from the top, is the simplest mental model:
+two collab binaries talking over Axl, each one an MCP bridge to its
+local agent.
 
-| # | Component | Responsibility |
-|---|-----------|----------------|
-| 1 | MCP server (`internal/mcp`) | bridges the local agent to collab's tools (HTTP or stdio) |
-| 2 | Session store (`internal/store`) | G-Set log + LWW-Register file index, tombstones, change subscriptions |
-| 3 | Sync engine (`internal/sync`) | fsnotify watcher, echo-suppressed broadcast, replay-on-join |
-| 4 | Axl transport (`internal/transport`) | spawns the Axl daemon; HTTP client over `localhost:NNNN` |
-| 5 | `./shared/` | the collaboration sandbox |
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/architecture-dark.svg">
+    <img src="web/architecture.svg" alt="Two peers connected over Axl P2P, each running an AI agent that talks MCP to its local collab binary" width="900">
+  </picture>
+</p>
 
-Plus `internal/tui` (bubbletea), `internal/handle` (fun-name
-generator), `internal/bootstrap` (first-time Axl install), and
-`internal/state` (the `~/.collab/state.json` snapshot that powers
-`collab status`).
+Inside one peer, the work is split across five small Go packages.
+Each layer talks to the layer immediately below it through a Go
+interface, so the transport (and the agent it bridges to) is
+swappable.
 
-The transport layer is replaceable. No Axl-specific types cross its
-package boundary. See [`docs/02-architecture.md`](docs/02-architecture.md)
-for the full breakdown.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/architecture-stack-dark.svg">
+    <img src="web/architecture-stack.svg" alt="Vertical stack of layers inside one peer: AI agent on top, then internal/mcp, internal/store + internal/sync, internal/transport, and the Gensyn Axl daemon at the bottom routing onto the Yggdrasil mesh" width="640">
+  </picture>
+</p>
 
-## Status
+Supporting packages: `internal/tui` (bubbletea session view),
+`internal/handle` (fun-name generator), `internal/bootstrap`
+(first-time Axl install), `internal/state` (the
+`~/.collab/state.json` snapshot that powers `collab status`).
 
-Demo-ready for Claude Code with two participants on the same machine
-or across two reachable hosts. Engine layer (store + sync + transport)
-is unit-tested and has integration tests that bring up real Axl
-daemons and round-trip a log entry in around 200ms.
-
-Not yet:
-
-- More than 4 simultaneous peers (architecture supports them, not
-  exercised in tests).
-- Persistence across host restarts (sessions are ephemeral).
-- Public Gensyn bootstrap nodes, which would let two machines pair
-  without the host exposing a port. Today, you set `--public-addr`
-  to a reachable endpoint.
-- Verified Codex / Cursor compatibility (architecture is
-  agent-agnostic; testing pending).
-
-See [`docs/09-build-plan.md`](docs/09-build-plan.md) for the full plan
-and what's done.
-
-## Links
-
-- Website: <https://aman035.github.io/collab-ai/>
-- Releases: <https://github.com/Aman035/collab-ai/releases>
-- Built on Gensyn Axl: <https://github.com/gensyn-ai/axl>
+For the full layer-by-layer breakdown including CRDT semantics, wire
+protocol, and failure modes, see
+[`docs/02-architecture.md`](docs/02-architecture.md).
 
 ## License
 

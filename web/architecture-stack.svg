@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" role="img" aria-labelledby="stackTitle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <title id="stackTitle">What's inside one collab peer: layers from agent down to network</title>
+
+  <defs>
+    <marker id="down" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 0 4 L 5 10 L 10 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="up" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 0 6 L 5 0 L 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="down-cobalt" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 0 4 L 5 10 L 10 4" fill="none" stroke="#2547ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <style>
+    svg {
+      --text:    #1a1a1a;
+      --meta:    #6a6a6a;
+      --tag:     #888888;
+      --line:    #2a2a2a;
+      --soft:    #d8d6d0;
+      --bg-box:  #fbfaf6;
+      --accent:  #2547ff;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg {
+        --text:    #e8e8e8;
+        --meta:    #a0a0a0;
+        --tag:     #707070;
+        --line:    #d6d6d6;
+        --soft:    #3a3a3a;
+        --bg-box:  rgba(255,255,255,0.02);
+        --accent:  #7c92ff;
+      }
+    }
+
+    .layer-bg     { fill: var(--bg-box); stroke: var(--soft); stroke-width: 1.4; }
+    .layer-tag    { font-size: 11px; fill: var(--tag); letter-spacing: 0.18em; text-transform: uppercase; }
+    .layer-name   { font-size: 17px; fill: var(--text); font-weight: 500; }
+    .layer-desc   { font-size: 12px; fill: var(--meta); }
+    .arrow        { stroke: var(--meta); stroke-width: 1.4; fill: none; color: var(--meta); }
+    .arrow-cobalt { stroke: var(--accent); stroke-width: 1.6; fill: none; color: var(--accent); }
+    .channel-tag  { font-size: 11px; fill: var(--meta); font-style: italic; }
+    .out-tag      { font-size: 12px; fill: var(--accent); letter-spacing: 0.04em; font-weight: 500; }
+  </style>
+
+  <!-- LAYER 1: AI agent -->
+  <g transform="translate(40 30)">
+    <rect class="layer-bg" x="0" y="0" width="640" height="80" rx="6"/>
+    <text class="layer-tag"  x="20" y="22">user-facing</text>
+    <text class="layer-name" x="20" y="48">AI agent</text>
+    <text class="layer-desc" x="20" y="68">Claude Code, Codex, Cursor, or any MCP-capable agent</text>
+  </g>
+
+  <!-- channel: MCP -->
+  <g transform="translate(360 110)">
+    <line class="arrow" x1="0" y1="0" x2="0" y2="36" marker-start="url(#up)" marker-end="url(#down)"/>
+    <text class="channel-tag" x="14" y="22">MCP HTTP, localhost:NNNN</text>
+  </g>
+
+  <!-- LAYER 2: internal/mcp -->
+  <g transform="translate(40 156)">
+    <rect class="layer-bg" x="0" y="0" width="640" height="74" rx="6"/>
+    <text class="layer-tag"  x="20" y="22">1 · bridge</text>
+    <text class="layer-name" x="20" y="48">internal/mcp</text>
+    <text class="layer-desc" x="20" y="66">5 tools the agent can call. CLAUDE.md primes it on when to use each.</text>
+  </g>
+
+  <!-- channel -->
+  <g transform="translate(360 230)">
+    <line class="arrow" x1="0" y1="0" x2="0" y2="22" marker-end="url(#down)"/>
+  </g>
+
+  <!-- LAYER 3a + 3b: store + sync side by side -->
+  <g transform="translate(40 256)">
+    <rect class="layer-bg" x="0" y="0" width="312" height="100" rx="6"/>
+    <text class="layer-tag"  x="20" y="22">2 · state</text>
+    <text class="layer-name" x="20" y="48">internal/store</text>
+    <text class="layer-desc" x="20" y="68">G-Set log (ULID) ·</text>
+    <text class="layer-desc" x="20" y="84">LWW-Register file index + tombstones</text>
+
+    <rect class="layer-bg" x="328" y="0" width="312" height="100" rx="6"/>
+    <text class="layer-tag"  x="348" y="22">3 · propagation</text>
+    <text class="layer-name" x="348" y="48">internal/sync</text>
+    <text class="layer-desc" x="348" y="68">fsnotify watcher · echo</text>
+    <text class="layer-desc" x="348" y="84">suppression · replay-on-join</text>
+  </g>
+
+  <!-- channel -->
+  <g transform="translate(360 356)">
+    <line class="arrow" x1="0" y1="0" x2="0" y2="22" marker-end="url(#down)"/>
+  </g>
+
+  <!-- LAYER 4: transport -->
+  <g transform="translate(40 382)">
+    <rect class="layer-bg" x="0" y="0" width="640" height="74" rx="6"/>
+    <text class="layer-tag"  x="20" y="22">4 · transport</text>
+    <text class="layer-name" x="20" y="48">internal/transport</text>
+    <text class="layer-desc" x="20" y="66">spawns + supervises the Axl daemon · HTTP client over localhost:9002</text>
+  </g>
+
+  <!-- channel -->
+  <g transform="translate(360 456)">
+    <line class="arrow" x1="0" y1="0" x2="0" y2="36" marker-start="url(#up)" marker-end="url(#down)"/>
+    <text class="channel-tag" x="14" y="22">HTTP, localhost:9002</text>
+  </g>
+
+  <!-- LAYER 5: Axl -->
+  <g transform="translate(40 502)">
+    <rect class="layer-bg" x="0" y="0" width="640" height="74" rx="6"/>
+    <text class="layer-tag"  x="20" y="22">child process</text>
+    <text class="layer-name" x="20" y="48">Gensyn Axl daemon</text>
+    <text class="layer-desc" x="20" y="66">auto-built into ~/.collab/bin/axl-node on first run</text>
+  </g>
+
+  <!-- channel: out to mesh -->
+  <g transform="translate(360 576)">
+    <line class="arrow-cobalt" x1="0" y1="0" x2="0" y2="42" marker-end="url(#down-cobalt)"/>
+  </g>
+
+  <!-- destination tag -->
+  <g transform="translate(360 632)">
+    <text class="out-tag" x="0" y="0" text-anchor="middle">Yggdrasil mesh</text>
+    <text class="layer-desc" x="0" y="22" text-anchor="middle">→ other peers</text>
+  </g>
+</svg>
