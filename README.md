@@ -1,23 +1,30 @@
-<div align="center">
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/banner-dark.svg">
+    <img src="web/banner.svg" alt="collab: multiplayer for AI coding agents" width="100%">
+  </picture>
+</p>
 
-# collab
+<p align="center">
+  Pair on Claude Code (or any MCP-capable agent) across machines, across
+  networks, with no hosted platform. Each developer brings their own agent
+  and their own API key.
+</p>
 
-**Multiplayer for AI coding agents.** Peer-to-peer over [Gensyn Axl][axl].
+<p align="center">
+  <a href="https://aman035.github.io/collab-ai/"><strong>Website</strong></a>
+  &nbsp;·&nbsp;
+  <a href="#install">Install</a>
+  &nbsp;·&nbsp;
+  <a href="#use">Use</a>
+  &nbsp;·&nbsp;
+  <a href="#architecture">Architecture</a>
+</p>
 
-Pair on Claude Code (or any MCP-capable agent) across machines, across
-networks, with no hosted platform. Each developer brings their own
-agent and their own API key.
-
-[**aman035.github.io/collab-ai**](https://aman035.github.io/collab-ai/) &nbsp;·&nbsp;
-[Install](#install) &nbsp;·&nbsp;
-[Use](#use) &nbsp;·&nbsp;
-[How it works](#how-it-works) &nbsp;·&nbsp;
-[Architecture](#architecture)
-
-[![release](https://img.shields.io/github/v/release/Aman035/collab-ai?color=2547ff&label=release)](https://github.com/Aman035/collab-ai/releases)
-[![license](https://img.shields.io/github/license/Aman035/collab-ai?color=2547ff)](LICENSE)
-
-</div>
+<p align="center">
+  <a href="https://github.com/Aman035/collab-ai/releases"><img src="https://img.shields.io/github/v/release/Aman035/collab-ai?color=0d9488&label=release" alt="release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Aman035/collab-ai?color=0d9488" alt="license"></a>
+</p>
 
 ---
 

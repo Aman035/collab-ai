@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="bannerTitle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <title id="bannerTitle">collab: multiplayer for AI coding agents, peer-to-peer over Gensyn Axl</title>
+
+  <defs>
+    <marker id="bcaret-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10" fill="none" stroke="#5eead4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="bcaret-l" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 10 0 L 0 5 L 10 10" fill="none" stroke="#5eead4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#0d0e12"/>
+
+  <line x1="80" y1="80" x2="1520" y2="80" stroke="#22252b" stroke-width="1"/>
+  <line x1="80" y1="820" x2="1520" y2="820" stroke="#22252b" stroke-width="1"/>
+
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#9a978f" letter-spacing="0.08em">
+    <text x="80" y="120">v0.2</text>
+  </g>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#9a978f" letter-spacing="0.04em">
+    <text x="1520" y="120" text-anchor="end">github.com/Aman035/collab-ai</text>
+  </g>
+
+  <g transform="translate(80 320)">
+    <g fill="none" stroke="#5eead4" stroke-width="6" stroke-linecap="round">
+      <circle cx="46" cy="0" r="22" fill="#5eead4"/>
+      <line x1="68" y1="0" x2="116" y2="0"/>
+      <circle cx="138" cy="0" r="22"/>
+    </g>
+    <text x="200" y="22" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-weight="500" font-size="180" fill="#e6e6e1" letter-spacing="-0.04em">collab<tspan fill="#5eead4">.</tspan></text>
+  </g>
+
+  <text x="80" y="500" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-weight="400" font-size="64" fill="#cfcdc7" letter-spacing="-0.02em">
+    Multiplayer for AI coding agents.
+  </text>
+
+  <text x="80" y="570" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="22" fill="#9a978f" letter-spacing="0.02em">
+    Pair on Claude Code, Codex, or Cursor sessions. Peer-to-peer, no platform.
+  </text>
+
+  <g transform="translate(960 660)" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+    <g stroke="#cfcdc7" stroke-width="1.6" fill="none" stroke-linecap="round">
+      <path d="M 0 8 L 0 0 L 10 0"/>
+      <path d="M 130 0 L 140 0 L 140 8"/>
+      <path d="M 140 50 L 140 58 L 130 58"/>
+      <path d="M 10 58 L 0 58 L 0 50"/>
+    </g>
+    <text x="14" y="22" font-size="16" fill="#e6e6e1">peer A</text>
+    <text x="14" y="44" font-size="14" fill="#9a978f">collab</text>
+
+    <text x="220" y="22" font-size="14" fill="#5eead4" font-weight="500" text-anchor="middle">Axl P2P</text>
+    <line x1="160" y1="34" x2="280" y2="34" stroke="#5eead4" stroke-width="2.2" stroke-linecap="round"
+          marker-start="url(#bcaret-l)" marker-end="url(#bcaret-r)"/>
+    <text x="220" y="54" font-size="13" fill="#9a978f" text-anchor="middle">log + files</text>
+
+    <g transform="translate(300 0)" stroke="#cfcdc7" stroke-width="1.6" fill="none" stroke-linecap="round">
+      <path d="M 0 8 L 0 0 L 10 0"/>
+      <path d="M 130 0 L 140 0 L 140 8"/>
+      <path d="M 140 50 L 140 58 L 130 58"/>
+      <path d="M 10 58 L 0 58 L 0 50"/>
+    </g>
+    <text x="314" y="22" font-size="16" fill="#e6e6e1">peer B</text>
+    <text x="314" y="44" font-size="14" fill="#9a978f">collab</text>
+  </g>
+
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" fill="#9a978f" letter-spacing="0.04em">
+    <text x="80" y="860">$ curl -sSL collab-ai.dev/install.sh | sh</text>
+    <text x="1520" y="860" text-anchor="end" fill="#5eead4">aman035.github.io/collab-ai</text>
+  </g>
+</svg>
