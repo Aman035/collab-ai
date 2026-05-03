@@ -22,3 +22,6 @@ go.work.sum
 
 # collab-ai runtime state (per-session)
 .collab-ai/
+
+# Local-only hackathon answers; do not publish.
+submission.md
