@@ -104,10 +104,6 @@ the transport (and the agent it bridges to) is swappable.
   </picture>
 </p>
 
-For the full layer-by-layer breakdown including CRDT semantics, wire
-protocol, and failure modes, see
-[`docs/02-architecture.md`](docs/02-architecture.md).
-
 ## Install
 
 One curl. The Gensyn Axl daemon auto-builds into `~/.collab/bin/` on the
@@ -129,41 +125,52 @@ Prebuilt binaries for darwin / linux × amd64 / arm64 ship with every
 
 ## How to Use
 
-### Single machine
+Two developers, two laptops, somewhere on the same network or both on
+the public internet. Run `collab` on each side. The host opens a port,
+the joiner dials it, and both agents share a session over the wire.
 
-Two terminal tabs. Tab A:
+### 1. Host opens a session
 
-```bash
-collab create alice
-```
-
-Copy the invite from the TUI. Tab B:
-
-```bash
-collab join COLLAB-...  bob
-```
-
-Both TUIs show each other in the peer roster. Press `[a]` in either to
-launch your AI agent. Ask Claude to `post_to_log "hello"` and the other
-tab's Claude sees it via `get_shared_log`.
-
-### Two machines (e.g. SSH)
-
-On the host server:
+On your machine, pick a hostname or IP that your pair partner can
+actually reach you on (your laptop's hostname on the corporate VPN,
+your office IP, or a Tailscale / cloud-instance address):
 
 ```bash
-collab create alice --public-addr tls://server1.example.com:9001
+collab create alice --public-addr tls://your-host.example.com:9001
 ```
 
-The invite embeds that address. On the joiner server:
+Make sure port `9001` is reachable from your partner's machine.
+Firewall, security-group, or port-forward as needed.
+
+The TUI opens with the session name, your handle, and an invite code.
+Press `[c]` to copy the invite, then send it to your partner over any
+out-of-band channel (Slack, SMS, whatever).
+
+### 2. Partner joins
+
+On their machine:
 
 ```bash
 collab join COLLAB-...  bob
 ```
 
-The joiner's Axl daemon dials `server1.example.com:9001` automatically.
-Make sure port 9001 on the host is reachable from the joiner (security
-group / firewall rule).
+The joiner's Axl daemon dials your `--public-addr` automatically using
+the address baked into the invite. Within a second or two, both peer
+rosters show each other.
+
+### 3. Launch agents and pair
+
+In each TUI, press `[a]` to launch Claude Code (or any other agent
+you've installed). The agent opens already aware of the session: it
+runs `get_shared_log` first to inherit context, then uses `post_to_log`,
+`ask_peer`, `respond_to_peer`, and `set_status` proactively as you and
+your partner work.
+
+Drop files into your local `~/collab/<session>/shared/` and they
+propagate to the partner's `./shared/` within a few seconds. Files
+anywhere else stay private.
+
+When you're done, `[q]` or `Ctrl+C` tears down the session cleanly.
 
 ### What the TUI looks like
 
