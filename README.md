@@ -6,17 +6,11 @@
 </p>
 
 <p align="center">
-  Pair on Claude Code (or any MCP-capable agent) across machines, across
-  networks, with no hosted platform. Each developer brings their own agent
-  and their own API key.
-</p>
-
-<p align="center">
   <a href="https://aman035.github.io/collab-ai/"><strong>Website</strong></a>
   &nbsp;·&nbsp;
   <a href="#install">Install</a>
   &nbsp;·&nbsp;
-  <a href="#use">Use</a>
+  <a href="#how-to-use">How to use</a>
   &nbsp;·&nbsp;
   <a href="#architecture">Architecture</a>
 </p>
@@ -28,32 +22,102 @@
 
 ---
 
-## What it is
+## Problem Statement
+
+AI coding agents are single-player. Real engineering (debugging, code
+review, mentorship, incident response) is rarely solo work. The current
+options for two developers who both want to use AI on the same problem
+all break in some important way:
+
+1. **Screen-share is passive.** One person drives, the other watches. The
+   observer can't ask their own question without interrupting the driver's
+   flow, and only one agent is doing real work.
+2. **Shared accounts break the rules.** Splitting a Claude Code seat or
+   sharing API keys violates ToS, mangles billing, and leaks credentials.
+3. **Async git loses the live reasoning.** By the time the diff lands in
+   a PR, the chain of thought that produced it is already gone.
+4. **Pasting transcripts into Slack** goes stale by the time anyone reads
+   it, and a wall of agent text is unreadable in chat.
+
+The deeper tension: developers want **shared context** (everyone sees the
+same problem and code) but need **independent agency** (each person asks
+their own questions, uses their own quota). Centralized solutions require
+a hosted platform, which means lock-in, privacy concerns, and platform
+risk.
+
+## Solution & Use Cases
+
+`collab` is a small Go CLI that gives every developer their own AI agent
+plus a shared pair-programming channel between agents. Peer-to-peer over
+[Gensyn Axl][axl]. No central server, no shared accounts.
+
+Two channels cross the wire and nothing else:
+
+- **A shared conversation log** (G-Set CRDT, ULID-keyed). Every
+  `post_to_log` from any peer's agent appears in every other peer's
+  `get_shared_log`. `ask_peer` and `respond_to_peer` add direct, targeted
+  requests one agent makes of another.
+- **A shared `./shared/` directory.** Files dropped here propagate via
+  fsnotify, merged with a per-file LWW-Register CRDT (add-wins on
+  concurrent edit + delete, capped at 256 KB per file).
+
+Everything else stays local: API keys, files outside `./shared/`,
+environment, your agent's tool-call results.
+
+**Concrete use cases:**
+
+- **Two-developer debugging across machines.** Senior + junior hit a prod
+  bug. Both join the session, each agent explores a different part of the
+  codebase, findings get posted to the shared log, and the diff lands in
+  `./shared/`.
+- **Live code review with two agents.** Reviewer's agent reads the diff
+  and posts comments to the log. Author's agent reads them, addresses
+  them, posts back. Files and proposed fixes flow through `./shared/`.
+- **Async handoff across timezones.** Developer A works during their day,
+  posting context + decisions + scratch files. Developer B wakes up,
+  joins the session, and their agent inherits the full backlog via
+  initial-state replay (not a stale PR + Slack thread).
+- **Mixed-agent coordination.** One developer on Claude Code, another on
+  Codex, third on Cursor. The protocol is agent-agnostic; collab is the
+  wire between any MCP-capable agents.
+- **Incident response.** Three on-call engineers in one session, three
+  agents exploring three hypotheses simultaneously. First one to find the
+  root cause posts; everyone's context updates.
+- **Mentorship.** Instructor's agent does real work; student's agent
+  handles basics; student watches the senior reasoning unfold via
+  `get_shared_log` rather than over a Zoom screen-share.
+
+## Architecture
+
+The two-peer view is the simplest mental model: two `collab` binaries
+talking over Axl, each one an MCP bridge to its local agent.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="web/architecture-dark.svg">
-    <img src="web/architecture.svg" alt="Two peers, each running an AI agent connected over MCP to a local collab binary, peered to the other via Axl P2P" width="900">
+    <img src="web/architecture.svg" alt="Two peers connected over Axl P2P, each running an AI agent that talks MCP to its local collab binary" width="900">
   </picture>
 </p>
 
-Two channels cross the network and nothing else:
+Inside one peer, the work is split across five small Go packages. Each
+layer talks to the layer immediately below it through a Go interface, so
+the transport (and the agent it bridges to) is swappable.
 
-- **Shared conversation log** (G-Set CRDT keyed by ULID). Every
-  `post_to_log` from any peer's agent shows up via `get_shared_log`
-  on every other peer's agent. `ask_peer` and `respond_to_peer` add
-  direct, targeted requests that one agent makes of another.
-- **`./shared/`**. Files dropped here propagate via fsnotify, merged
-  with a per-file LWW-Register CRDT (add-wins on concurrent edit + delete),
-  capped at 256 KB per file.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/architecture-stack-dark.svg">
+    <img src="web/architecture-stack.svg" alt="Vertical stack of layers inside one peer: AI agent on top, internal/mcp, internal/store + internal/sync, internal/transport, and the Gensyn Axl daemon at the bottom routing onto the Yggdrasil mesh" width="640">
+  </picture>
+</p>
 
-Everything else stays local: API keys, files outside `./shared/`,
-environment variables, your agent's tool-call results.
+For the full layer-by-layer breakdown including CRDT semantics, wire
+protocol, and failure modes, see
+[`docs/02-architecture.md`](docs/02-architecture.md).
 
 ## Install
 
-One curl. The Gensyn Axl daemon auto-builds into `~/.collab/bin/` on
-first session, so there is no second binary to chase.
+One curl. The Gensyn Axl daemon auto-builds into `~/.collab/bin/` on the
+first session, so there's no second binary to chase.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/Aman035/collab-ai/main/install.sh | sh
@@ -69,7 +133,7 @@ Requires Go 1.22+ and `git` (used once, on the first Axl bootstrap).
 Prebuilt binaries for darwin / linux × amd64 / arm64 ship with every
 [release](https://github.com/Aman035/collab-ai/releases).
 
-## Use
+## How to Use
 
 ### Single machine
 
@@ -86,8 +150,8 @@ collab join COLLAB-...  bob
 ```
 
 Both TUIs show each other in the peer roster. Press `[a]` in either to
-launch Claude. Ask Claude to `post_to_log "hello"` and the other tab's
-Claude sees it via `get_shared_log`.
+launch your AI agent. Ask Claude to `post_to_log "hello"` and the other
+tab's Claude sees it via `get_shared_log`.
 
 ### Two machines (e.g. SSH)
 
@@ -105,7 +169,7 @@ collab join COLLAB-...  bob
 
 The joiner's Axl daemon dials `server1.example.com:9001` automatically.
 Make sure port 9001 on the host is reachable from the joiner (security
-group or firewall rule).
+group / firewall rule).
 
 ### What the TUI looks like
 
@@ -131,7 +195,7 @@ group or firewall rule).
 ╰───────────────────────────────────────────────────────────────────────────────╯
 ```
 
-## What the agent can do
+### What the agent can do
 
 Five MCP tools land in the launched Claude session, auto-discovered via
 the per-session `CLAUDE.md` collab writes for it:
@@ -145,7 +209,7 @@ the per-session `CLAUDE.md` collab writes for it:
 | `set_status(status)` | Update your "what I'm doing" line. Appears under your handle in everyone's TUI. |
 | `list_shared_files` | What's in `./shared/` right now. |
 
-## Verbs
+### Verbs
 
 ```
 collab create [name] [--public-addr ...] [--listen ...]   start a session
@@ -156,59 +220,8 @@ collab help [verb]                                         per-command help
 collab version                                             build info
 ```
 
-## How it works
+---
 
-When you `collab create`:
-
-1. Allocate a session dir at `~/collab/<auto-name>/`. The agent runs
-   here; `./shared/` is the synced subdir.
-2. Spawn the Axl daemon (auto-built from source on first run into
-   `~/.collab/bin/axl-node`). Listens on `tls://0.0.0.0:9001` by default.
-3. Mint an invite: `COLLAB-<peer_id>-<token>-<addr_b64>`.
-4. Start an HTTP MCP server on a random local port. collab is the
-   parent, the agent is the child.
-5. Register the MCP server at user-scope via `claude mcp add`. No
-   per-project approval prompt.
-6. Write `CLAUDE.md` into the session dir so the agent boots aware of
-   the available tools and when to use them.
-7. Open the TUI. Press `[a]` and Claude launches with cwd = session dir.
-
-## Architecture
-
-The two-peer view, repeated from the top, is the simplest mental model:
-two collab binaries talking over Axl, each one an MCP bridge to its
-local agent.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="web/architecture-dark.svg">
-    <img src="web/architecture.svg" alt="Two peers connected over Axl P2P, each running an AI agent that talks MCP to its local collab binary" width="900">
-  </picture>
-</p>
-
-Inside one peer, the work is split across five small Go packages.
-Each layer talks to the layer immediately below it through a Go
-interface, so the transport (and the agent it bridges to) is
-swappable.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="web/architecture-stack-dark.svg">
-    <img src="web/architecture-stack.svg" alt="Vertical stack of layers inside one peer: AI agent on top, then internal/mcp, internal/store + internal/sync, internal/transport, and the Gensyn Axl daemon at the bottom routing onto the Yggdrasil mesh" width="640">
-  </picture>
-</p>
-
-Supporting packages: `internal/tui` (bubbletea session view),
-`internal/handle` (fun-name generator), `internal/bootstrap`
-(first-time Axl install), `internal/state` (the
-`~/.collab/state.json` snapshot that powers `collab status`).
-
-For the full layer-by-layer breakdown including CRDT semantics, wire
-protocol, and failure modes, see
-[`docs/02-architecture.md`](docs/02-architecture.md).
-
-## License
-
-[MIT](LICENSE)
+[MIT](LICENSE).  Built on [Gensyn Axl][axl].
 
 [axl]: https://github.com/gensyn-ai/axl
