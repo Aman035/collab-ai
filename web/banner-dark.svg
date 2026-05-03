@@ -16,10 +16,9 @@
   <line x1="80" y1="820" x2="1520" y2="820" stroke="#22252b" stroke-width="1"/>
 
   <g transform="translate(80 320)">
-    <g fill="none" stroke="#5eead4" stroke-width="6" stroke-linecap="round">
-      <circle cx="46" cy="0" r="22" fill="#5eead4"/>
-      <line x1="68" y1="0" x2="116" y2="0"/>
-      <circle cx="138" cy="0" r="22"/>
+    <g transform="translate(0 -64) scale(2.6)" fill="#5eead4" stroke="#5eead4">
+      <path d="M 32 11 A 21 21 0 0 0 32 53 Z" stroke="none"/>
+      <path d="M 32 11 A 21 21 0 0 1 32 53" fill="none" stroke-width="5" stroke-linecap="round"/>
     </g>
     <text x="200" y="22" font-family="Newsreader, 'Iowan Old Style', Georgia, serif" font-weight="500" font-size="180" fill="#e6e6e1" letter-spacing="-0.04em">collab<tspan fill="#5eead4">.</tspan></text>
   </g>

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>collab: multiplayer for AI coding agents</title>
   <meta name="description" content="A small Go CLI that lets two developers share a Claude Code, Codex, or Cursor session, peer-to-peer. Each developer brings their own agent.">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#08090d">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#faf8f3">
 
   <meta property="og:title" content="collab: multiplayer for AI coding agents">
   <meta property="og:description" content="Pair on Claude Code, Codex, or Cursor sessions peer-to-peer. Each developer brings their own agent.">
@@ -20,21 +20,16 @@
 
   <link rel="stylesheet" href="styles.css">
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%2308090d'/%3E%3Ccircle cx='22' cy='32' r='9' fill='%235eead4'/%3E%3Cline x1='31' y1='32' x2='42' y2='32' stroke='%235eead4' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='48' cy='32' r='6' fill='none' stroke='%235eead4' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23faf8f3'/%3E%3Cpath d='M 32 11 A 21 21 0 0 0 32 53 Z' fill='%23ea580c'/%3E%3Cpath d='M 32 11 A 21 21 0 0 1 32 53' fill='none' stroke='%23ea580c' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 </head>
 <body>
-
-  <!-- Decorative grid + radial glow behind the hero. Pure CSS, no images. -->
-  <div class="bg-grid" aria-hidden="true"></div>
-  <div class="bg-glow" aria-hidden="true"></div>
 
   <header class="topbar">
     <div class="container topbar-inner">
       <a href="#top" class="brand" aria-label="collab">
         <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="22" cy="32" r="9" fill="currentColor"/>
-          <line x1="31" y1="32" x2="42" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="48" cy="32" r="6" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M 32 11 A 21 21 0 0 0 32 53 Z" fill="currentColor"/>
+          <path d="M 32 11 A 21 21 0 0 1 32 53" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
         </svg>
         <span class="brand-word">collab</span>
       </a>
@@ -416,9 +411,8 @@
     <div class="container footer-row">
       <a href="#top" class="brand brand-footer">
         <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="22" cy="32" r="9" fill="currentColor"/>
-          <line x1="31" y1="32" x2="42" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="48" cy="32" r="6" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M 32 11 A 21 21 0 0 0 32 53 Z" fill="currentColor"/>
+          <path d="M 32 11 A 21 21 0 0 1 32 53" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
         </svg>
         <span class="brand-word">collab</span>
       </a>

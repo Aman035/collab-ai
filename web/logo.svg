@@ -1,12 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="collab logo: two peers connected by a wire">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="collab">
+  <title>collab</title>
   <!--
-    Two circles, one filled (you), one outlined (peer), connected by a wire.
-    Reads as "collab" / "P2P". Single teal accent. Transparent background so
-    it works on light, dark, paper, and pure black surfaces.
+    Split disc. Left half is a solid disc, right half is an open ring,
+    sharing one center axis. Reads as "two halves of one whole" without
+    being a literal network diagram. currentColor inherits from parent
+    so the same mark works on dark, light, and paper surfaces.
   -->
-  <g fill="none" stroke="#0d9488" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="16" cy="32" r="9" fill="#0d9488"/>
-    <line x1="25" y1="32" x2="39" y2="32"/>
-    <circle cx="48" cy="32" r="9"/>
-  </g>
+  <path d="M 32 11 A 21 21 0 0 0 32 53 Z" fill="currentColor"/>
+  <path d="M 32 11 A 21 21 0 0 1 32 53" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
 </svg>
