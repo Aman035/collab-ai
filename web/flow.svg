@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" aria-labelledby="flowTitle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <title id="flowTitle">collab in motion: posts, ask_peer, answers, and files flowing between two peers on Axl</title>
+
+  <defs>
+    <marker id="caret-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="caret-l" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 10 0 L 0 5 L 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <style>
+    svg {
+      --text:    #1a1a1a;
+      --meta:    #6a6a6a;
+      --tag:     #888888;
+      --corner:  #2a2a2a;
+      --wire:    #c8c5be;
+      --pill-bg: #0d9488;
+      --pill-fg: #ffffff;
+      --self-bg: #14b8a6;
+      --side:    #807d77;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg {
+        --text:    #e8e8e8;
+        --meta:    #a0a0a0;
+        --tag:     #707070;
+        --corner:  #d6d6d6;
+        --wire:    #3a3a3a;
+        --pill-bg: #5eead4;
+        --pill-fg: #0d0e12;
+        --self-bg: #2dd4bf;
+        --side:    #9a978f;
+      }
+    }
+    .corner   { stroke: var(--corner); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+    .peer-tag { font-size: 11px; fill: var(--tag); letter-spacing: 0.18em; text-transform: uppercase; }
+    .row-text { font-size: 15px; fill: var(--text); }
+    .row-meta { font-size: 11px; fill: var(--meta); }
+    .wire     { stroke: var(--wire); stroke-width: 1.4; stroke-dasharray: 2 6; }
+    .side-tag { font-size: 11px; fill: var(--side); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .packet rect    { fill: var(--pill-bg); }
+    .packet text    { fill: var(--pill-fg); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; }
+    .packet.alt rect{ fill: var(--self-bg); }
+  </style>
+
+  <!-- LEFT PEER -->
+  <g transform="translate(40 40)">
+    <path class="corner" d="M 0 14 L 0 0 L 14 0"/>
+    <path class="corner" d="M 246 0 L 260 0 L 260 14"/>
+    <path class="corner" d="M 260 226 L 260 240 L 246 240"/>
+    <path class="corner" d="M 14 240 L 0 240 L 0 226"/>
+
+    <text class="peer-tag" x="18" y="28">peer · alice</text>
+    <text class="row-text" x="22" y="78">AI agent</text>
+    <text class="row-meta" x="22" y="98">Claude Code</text>
+    <text class="row-text" x="22" y="148">collab</text>
+    <text class="row-meta" x="22" y="168">peer-to-peer</text>
+    <text class="row-text" x="22" y="218">./shared/</text>
+  </g>
+
+  <!-- RIGHT PEER -->
+  <g transform="translate(660 40)">
+    <path class="corner" d="M 0 14 L 0 0 L 14 0"/>
+    <path class="corner" d="M 246 0 L 260 0 L 260 14"/>
+    <path class="corner" d="M 260 226 L 260 240 L 246 240"/>
+    <path class="corner" d="M 14 240 L 0 240 L 0 226"/>
+
+    <text class="peer-tag" x="18" y="28">peer · bob</text>
+    <text class="row-text" x="22" y="78">AI agent</text>
+    <text class="row-meta" x="22" y="98">Claude Code</text>
+    <text class="row-text" x="22" y="148">collab</text>
+    <text class="row-meta" x="22" y="168">peer-to-peer</text>
+    <text class="row-text" x="22" y="218">./shared/</text>
+  </g>
+
+  <!-- WIRE between peers -->
+  <line class="wire" x1="306" y1="160" x2="654" y2="160"/>
+
+  <!-- Side labels above and below -->
+  <text class="side-tag" x="480" y="58" text-anchor="middle">Axl P2P</text>
+  <text class="side-tag" x="480" y="290" text-anchor="middle">log + files</text>
+
+  <!--
+    PACKETS · 12-second cycle, each one travels for ~2.6s within its slot.
+    Slot 1  (0.0s – 3.0s):  alice → bob   "post: found a bug in cache.go"
+    Slot 2  (3.0s – 6.0s):  alice → bob   "ask_peer: review widget.go"
+    Slot 3  (6.0s – 9.0s):  bob   → alice "answer: lgtm, ship it"
+    Slot 4  (9.0s –12.0s):  bob   → alice "file: cache.go.fix"
+  -->
+
+  <!-- packet 1: post (alice → bob) -->
+  <g class="packet" opacity="0">
+    <rect x="-58" y="-13" width="116" height="26" rx="13"/>
+    <text x="0" y="4" text-anchor="middle">post</text>
+    <animateTransform attributeName="transform" type="translate"
+                      keyTimes="0; 0.04; 0.21; 1"
+                      values="306 160; 306 160; 654 160; 654 160"
+                      dur="12s" begin="0s" repeatCount="indefinite"/>
+    <animate attributeName="opacity"
+             keyTimes="0; 0.04; 0.21; 0.24; 1"
+             values="0; 1; 1; 0; 0"
+             dur="12s" begin="0s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- packet 2: ask_peer (alice → bob) -->
+  <g class="packet" opacity="0">
+    <rect x="-72" y="-13" width="144" height="26" rx="13"/>
+    <text x="0" y="4" text-anchor="middle">ask_peer →bob</text>
+    <animateTransform attributeName="transform" type="translate"
+                      keyTimes="0; 0.04; 0.21; 1"
+                      values="306 160; 306 160; 654 160; 654 160"
+                      dur="12s" begin="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity"
+             keyTimes="0; 0.04; 0.21; 0.24; 1"
+             values="0; 1; 1; 0; 0"
+             dur="12s" begin="3s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- packet 3: answer (bob → alice). Uses the alt color so direction reads. -->
+  <g class="packet alt" opacity="0">
+    <rect x="-66" y="-13" width="132" height="26" rx="13"/>
+    <text x="0" y="4" text-anchor="middle">answer ←bob</text>
+    <animateTransform attributeName="transform" type="translate"
+                      keyTimes="0; 0.04; 0.21; 1"
+                      values="654 160; 654 160; 306 160; 306 160"
+                      dur="12s" begin="6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity"
+             keyTimes="0; 0.04; 0.21; 0.24; 1"
+             values="0; 1; 1; 0; 0"
+             dur="12s" begin="6s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- packet 4: file (bob → alice) -->
+  <g class="packet alt" opacity="0">
+    <rect x="-72" y="-13" width="144" height="26" rx="13"/>
+    <text x="0" y="4" text-anchor="middle">file: cache.go</text>
+    <animateTransform attributeName="transform" type="translate"
+                      keyTimes="0; 0.04; 0.21; 1"
+                      values="654 160; 654 160; 306 160; 306 160"
+                      dur="12s" begin="9s" repeatCount="indefinite"/>
+    <animate attributeName="opacity"
+             keyTimes="0; 0.04; 0.21; 0.24; 1"
+             values="0; 1; 1; 0; 0"
+             dur="12s" begin="9s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Subtle pulse on each peer when its side is active. Uses begin/end based
+       on the packet animations' visibility windows. -->
+  <g>
+    <!-- alice glow when she sends (slots 1, 2) -->
+    <circle cx="170" cy="78" r="3" fill="var(--pill-bg)" opacity="0">
+      <animate attributeName="opacity"
+               keyTimes="0; 0.02; 0.20; 0.22; 0.27; 0.45; 0.47; 1"
+               values="0; 0.9; 0.9; 0; 0.9; 0.9; 0; 0"
+               dur="12s" repeatCount="indefinite"/>
+    </circle>
+    <!-- bob glow when he sends (slots 3, 4) -->
+    <circle cx="790" cy="78" r="3" fill="var(--self-bg)" opacity="0">
+      <animate attributeName="opacity"
+               keyTimes="0; 0.52; 0.54; 0.70; 0.72; 0.77; 0.95; 0.97; 1"
+               values="0; 0; 0.9; 0.9; 0; 0.9; 0.9; 0; 0"
+               dur="12s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

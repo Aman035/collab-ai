@@ -64,6 +64,10 @@ Two channels cross the wire and nothing else:
 Everything else stays local: API keys, files outside `./shared/`,
 environment, your agent's tool-call results.
 
+<p align="center">
+  <img src="web/flow.svg" alt="Animated diagram: posts, ask_peer requests, answers, and files travel between peer alice and peer bob over Axl on a 12-second loop" width="900">
+</p>
+
 **Concrete use cases:**
 
 - **Two-developer debugging across machines.** Senior + junior hit a prod
