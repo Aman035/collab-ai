@@ -172,30 +172,6 @@ anywhere else stay private.
 
 When you're done, `[q]` or `Ctrl+C` tears down the session cleanly.
 
-### What the TUI looks like
-
-```
-╭───────────────────────────────────────────────────────────────────────────────╮
-│  collab  ·  sleek-platypus  ·  host                          you are alice   │
-│                                                                               │
-│  ▎ INVITE                                                                     │
-│    COLLAB-eae0761a…6c61-5768dd24ea-dGxzOi8vc2Vy…                              │
-│      press [c] to copy                                                        │
-│                                                                               │
-│  ▎ PEERS (2)                       ▎ LOG (3)                                  │
-│    ●  alice  · you                   14:32  bob: cache.go has off-by-one      │
-│       writing the test harness       14:33  alice ?→bob: review widget.go?    │
-│    ●  bob    · joined 4m ago         14:33  bob ←answer: lgtm, ship it        │
-│       reviewing widget.go                                                     │
-│                                                                               │
-│  ▎ SHARED FILES (2)                                                           │
-│    cache.go    2.4KB  · from bob · 30s ago                                    │
-│    widget.go   1.1KB  · from alice · 12s ago                                  │
-│                                                                               │
-│  [a] launch claude    [c] copy invite    [j/k] scroll log    [q] quit         │
-╰───────────────────────────────────────────────────────────────────────────────╯
-```
-
 ### What the agent can do
 
 Five MCP tools land in the launched Claude session, auto-discovered via
